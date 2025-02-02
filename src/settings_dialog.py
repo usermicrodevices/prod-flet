@@ -26,13 +26,15 @@ class SettingsDialog(ft.CupertinoAlertDialog):
         self.db_file_name = ft.TextField(hint_text='db file name', label='db file name', expand=True, value=page.client_storage.get('db_file_name') or 'prod.db')
         self.sync_products_interval = ft.TextField(hint_text='seconds', label='sync products interval', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('sync_products_interval') or '7200')
         self.sync_sales_interval = ft.TextField(hint_text='seconds', label='sync sales interval', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('sync_sales_interval') or '300')
+        self.basket_font_size = ft.TextField(hint_text='basket font size', label='basket font size', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('basket_font_size') or '16')
         self.content = ft.Column(controls=[
             ft.Row([self.protocol, self.port]),
             ft.Row([self.host]),
             ft.Row([self.login]),
             ft.Row([self.password]),
             ft.Row([self.db_file_name]),
-            ft.Row([self.sync_products_interval, self.sync_sales_interval])
+            ft.Row([self.sync_products_interval, self.sync_sales_interval]),
+            ft.Row([self.basket_font_size])
             ]
         )
         self.actions = [
@@ -50,5 +52,6 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('db_file_name', self.db_file_name.value)
             self.page.client_storage.set('sync_products_interval', self.sync_products_interval.value)
             self.page.client_storage.set('sync_sales_interval', self.sync_sales_interval.value)
+            self.page.client_storage.set('basket_font_size', self.basket_font_size.value)
             self.page.sync_products()
         self.page.close(e.control.parent)
