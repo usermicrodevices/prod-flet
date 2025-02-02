@@ -52,6 +52,7 @@ async def main(page: ft.Page):
                 logging.debug(['SYNC_PRODUCTS', result, msg])
         else:
             logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
+            status_code = page.http_conn.auth()
         page.sync_products_running = False
     page.sync_products = sync_products
 
@@ -59,7 +60,7 @@ async def main(page: ft.Page):
         logging.debug('PAGE NOW IS LOADED')
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
         page.http_conn = HttpConnector(page)
-        status_code = page.http_conn.auth()
+        status_code = page.http_conn.auth(show_alert=True)
         sync_products()
     page.run_thread(after_page_loaded, page)
 
@@ -88,7 +89,7 @@ async def main(page: ft.Page):
             logging.debug(msg)
         else:
             for doc_recs in recs:
-                data = {'sum_final':float(doc_recs[0]['sum_final']), 'registered_at':doc_recs[0]['registered_at']}
+                data = {'sum_final':float(doc_recs[0]['sum_final']), 'registered_at':doc_recs[0]['registered_at'].strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':doc_recs[0]['doc_type']}
                 records, rowids = [], []
                 for rec in doc_recs:
                     record = {'product':rec['product'], 'count':rec['count'], 'price':rec['price'], 'currency_id':rec['currency']['id']}
@@ -101,6 +102,7 @@ async def main(page: ft.Page):
                     logging.debug(['SALE FINISH SEND TO SERVER', sended])
                 if not sended:
                     logging.debug('CONNECTION ERROR')
+                    status_code = page.http_conn.auth()
                     break
                 else:
                     cleared_count = page.db_conn.clear_records(rowids)
@@ -216,7 +218,8 @@ async def main(page: ft.Page):
         if not basket.controls:
             alert('basket is empty', 'warning')
         else:
-            data = {'sum_final':basket_sum_final.value, 'registered_at':datetime.now().astimezone().strftime('%Y-%m-%dT%H:%M:%S %z')}
+            dtz_now = datetime.now().astimezone()
+            data = {'sum_final':basket_sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':'sale'}
             records = []
             for item in basket.controls:
                 record = {'product':item.data['product']['id'], 'count':item.data['ctrl_count'].value, 'price':item.data['product']['price'], 'currency':item.data['product']['currency']}
@@ -230,7 +233,7 @@ async def main(page: ft.Page):
                 logging.debug('SAVE SALE TO LOCAL DB...')
                 local_records = []
                 for r in records:
-                    local_records.append(('sale', data['registered_at'], r['product'], float(r['count']), 0.0, float(r['price']), float(data['sum_final']), r['currency']))
+                    local_records.append((data['type'], dtz_now, r['product'], float(r['count']), 0.0, float(r['price']), float(data['sum_final']), r['currency']))
                 result, msg = page.db_conn.insert_records(local_records)
                 logging.debug(['SAVE SALE TO LOCAL DB FINISH', result, msg])
             basket_crear()
