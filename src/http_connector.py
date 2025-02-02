@@ -1,4 +1,4 @@
-import asyncio, flet, json, logging, requests
+import asyncio, flet, json, logging, requests, sys
 #import requests_async as requests
 
 from html.parser import HTMLParser
@@ -41,14 +41,15 @@ class HttpConnector():
     def alert(self, msg: str, caption: str = 'error'):
         self.page.open(flet.AlertDialog(modal=True, title=flet.Text(caption), content=flet.Text(msg), actions=[flet.TextButton('ok', on_click=lambda e: self.page.close(e.control.parent))]))
 
-    def auth(self):
+    def auth(self, show_alert=False):
         self.auth_succes = False
         logging.debug(['🍪GET🍪', self.url_admin])
         try:
             response = self.session.get(self.url_admin)
         except Exception as e:
-            logging.error([e])
-            self.alert(f'{e}', self.url_admin)
+            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
+            if show_alert:
+                self.alert(f'{e}', self.url_admin)
             return 500
         parser = CSRFParser()
         parser.feed(response.content.decode('utf-8'))
@@ -57,17 +58,30 @@ class HttpConnector():
             headers = {'content-type':'application/json', 'X-CSRFToken':parser.csrfmiddlewaretoken}
             self.session.headers.update(headers)
             logging.debug(['🍰POST🍰', self.url_loign, payload])
-            response = self.session.post(self.url_loign, data=payload)
-            logging.debug(['🍰RESPONSE🍰', response.status_code])
-            logging.debug(['🍰SESSION.COOKIES🍰', self.session.cookies])
-            if response.status_code == 200:
-                self.auth_succes = True
+            try:
+                response = self.session.post(self.url_loign, data=payload)
+            except Exception as e:
+                logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
+                return 500
+            else:
+                logging.debug(['🍰RESPONSE🍰', response.status_code])
+                logging.debug(['🍰SESSION.COOKIES🍰', self.session.cookies])
+                if response.status_code == 200:
+                    self.auth_succes = True
+                    self.session.headers['X-CSRFToken'] = self.session.cookies.get('csrftoken', parser.csrfmiddlewaretoken)
+                    return 200
         else:
-            self.alert(self.url_admin, 'error authorization')
+            if show_alert:
+                self.alert(self.url_admin, 'error authorization')
+        return 400
 
     def get_products_cash(self):
         logging.debug(['🎂GET🎂', self.url_products_cash])
-        response = self.session.get(self.url_products_cash)
+        try:
+            response = self.session.get(self.url_products_cash)
+        except Exception as e:
+            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
+            return None
         logging.debug(['🎂RESPONSE🎂', response.status_code])
         logging.debug(['🎂SESSION.COOKIES🎂', self.session.cookies])
         logging.debug(['🎂SESSION.HEADERS🎂', self.session.headers])
@@ -78,7 +92,11 @@ class HttpConnector():
     def post_doc_cash(self, data):
         json_data = json.dumps(data)
         logging.debug(['🎂POST🎂', self.url_doc_cash, json_data])
-        response = self.session.post(self.url_doc_cash, json_data)
+        try:
+            response = self.session.post(self.url_doc_cash, json_data)
+        except Exception as e:
+            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
+            return False
         logging.debug(['🎂RESPONSE🎂', response.status_code])
         logging.debug(['🎂SESSION.COOKIES🎂', self.session.cookies])
         logging.debug(['🎂SESSION.HEADERS🎂', self.session.headers])

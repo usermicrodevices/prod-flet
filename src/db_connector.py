@@ -1,5 +1,36 @@
-import logging, sqlite3, sys
+import datetime, logging, sqlite3, sys
 
+def adapt_date_iso(val):
+    return val.isoformat()
+
+def adapt_datetime_iso(val):
+    return val.isoformat()
+
+def adapt_datetime_epoch(val):
+    return int(val.timestamp())
+
+sqlite3.register_adapter(datetime.date, adapt_date_iso)
+sqlite3.register_adapter(datetime.datetime, adapt_datetime_iso)
+sqlite3.register_adapter(datetime.datetime, adapt_datetime_epoch)
+
+def convert_date(val):
+    return datetime.date.fromisoformat(val)
+
+def convert_datetime(val):
+    return datetime.datetime.fromisoformat(val)
+
+def convert_timestamp(val):
+    if not isinstance(val, int):
+        try:
+            val = int(val)
+        except Exception as e:
+            logging.error(['CONVERT_TIMESTAMP', val, e])
+            return None
+    return datetime.datetime.fromtimestamp(val).astimezone()
+
+sqlite3.register_converter('date', convert_date)
+sqlite3.register_converter('datetime', convert_datetime)
+sqlite3.register_converter('timestamp', convert_timestamp)
 
 sqlite3.register_adapter(list, lambda args: f'{args}')
 sqlite3.register_converter('list_args', lambda arg: eval(arg))
@@ -23,7 +54,6 @@ class DbConnector():
             self.conn.close()
 
     def product_as_dict(self, v):
-        logging.debug(['PRODUCT_AS_DICT', v])
         return {'id':v[0],
             'name':v[1],
             'article':v[2],
@@ -37,38 +67,54 @@ class DbConnector():
         }
 
     def record_as_dict(self, v):
-        return {'id':v[0], 'doc_type':v[1], 'registered_at':v[2], 'product':v[3], 'count':v[4], 'cost':v[5], 'price':v[6], 'sum_final':v[7], 'currency':eval(v[8]) if v[8] else {}}
+        return {'rowid':v[0], 'doc_type':v[1], 'registered_at':v[2], 'product':v[3], 'count':v[4], 'cost':v[5], 'price':v[6], 'sum_final':v[7], 'currency':eval(v[8]) if v[8] else {}}
 
     def update_products(self, *args, **kwargs):
         if not self.cur:
             return False, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        updated = 0
         if 'data' in kwargs:
             try:
-                self.cur.executemany('INSERT INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp)', kwargs.get('data', []))
-            except sqlite3.IntegrityError as e:
-                updated = 0
-                for v in kwargs.get('data', []):
-                    try:
-                        self.cur.execute(f'''UPDATE products SET name='{v["name"]}', article='{v["article"]}', barcodes="{v['barcodes']}", qrcodes="{v['qrcodes']}", cost='{v["cost"]}', price='{v["price"]}', currency='{v["currency"]}', unit='{v["unit"]}', grp="{v['grp']}" WHERE id={v['id']};''')
-                    except Exception as e:
-                        logging.debug([e, f'{v}'])
-                    else:
-                        updated += 1
-                logging.debug(['UPDATED PRODUCTS', updated])
+                self.cur.executemany('INSERT INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp);', kwargs.get('data', []))
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                if 'UNIQUE constraint failed' not in f'{e}':
+                    logging.debug(['UPDATED PRODUCTS EXECUTEMANY INSERT', e])
+                try:
+                    self.cur.executemany('UPDATE products SET name=:name, article=:article, barcodes=:barcodes, qrcodes=:qrcodes, cost=:cost, price=:price, currency=:currency, unit=:unit, grp=:grp WHERE id=:id;', kwargs.get('data', []))
+                except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                    logging.debug(['UPDATED PRODUCTS EXECUTEMANY UPDATE', e])
+                    for v in kwargs.get('data', []):
+                        sql_query = f'''UPDATE products SET name='{v["name"]}', article='{v["article"]}', barcodes="{v['barcodes']}", qrcodes="{v['qrcodes']}", cost='{v["cost"]}', price='{v["price"]}', currency="{v['currency']}", unit="{v['unit']}", grp="{v['grp']}" WHERE id={v['id']};'''
+                        try:
+                            self.cur.execute(sql_query)
+                        except Exception as e:
+                            logging.debug([e, sql_query])
+                        else:
+                            updated += 1
+                    logging.debug(['UPDATED PRODUCTS', updated])
+                except Exception as e:
+                    return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
+                else:
+                    logging.debug('EXECUTEMANY UPDATE SUCCESS')
+                    updated = self.cur.rowcount
             except Exception as e:
-                return False, f'{e} {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+                return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}{e}'
+            else:
+                logging.debug('EXECUTEMANY INSERT SUCCESS')
+                updated = self.cur.rowcount
             #self.conn.commit()
-        return True, f'SUCCESS {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        logging.debug(['UPDATED PRODUCTS', updated])
+        return True, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def get_product(self, *args, **kwargs):
         if not self.cur:
-            return None, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         if not len(args):
-            return None, f'EMPTY SEARCH STRING {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING'
         result = None
         s = args[0]
         if not isinstance(s, (int, float)) and not s:
-            return None, f'EMPTY SEARCH STRING [{s}] {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING [{s}]'
         where_exp = f'''WHERE name LIKE ('%{s}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
         if s.isdigit():
             where_exp += f''' OR id={s}'''
@@ -76,56 +122,62 @@ class DbConnector():
         try:
             res = self.cur.execute(search_sql)
         except Exception as e:
-            return None, f'{search_sql} {e} {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {search_sql} {e}'
         else:
             v = res.fetchone()
             if v:
                 result = self.product_as_dict(v)
-        return result, f'SUCCESS {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def get_products(self, *args, **kwargs):
         if not self.cur:
-            return None, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         limit, offset = kwargs.get('limit', 10), kwargs.get('offset', 0)
         res = self.cur.execute(f'SELECT * FROM products LIMIT {limit} OFFSET {offset};')
         result = None
         if res:
             result = [self.product_as_dict(v) for v in res.fetchall()]
         logging.debug(result)
-        return result, f'SUCCESS {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def insert_records(self, data):
         if not self.cur:
-            return False, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         if not data:
-            return False, f'EMPTY DATA {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY DATA'
         else:
             try:
                 self.cur.executemany('INSERT INTO records VALUES(:doc_type, :registered_at, :product, :count, :cost, :price, :sum_final, :currency)', data)
             except Exception as e:
-                return False, f'{e} {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
-        return True, f'SUCCESS {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+                return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
+        return True, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def get_grouped_records(self, *args, **kwargs):
         if not self.cur:
-            return None, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+        sqlite3.register_converter('timestamp', lambda v: int(v))
         regs = self.cur.execute('SELECT registered_at FROM records GROUP BY registered_at ORDER BY registered_at;')
-        if regs:
-            result = []
-            for reg in regs:
-                sql_query = f'SELECT * FROM records WHERE registered_at={reg};'
+        result = []
+        regs_list = regs.fetchall()
+        sqlite3.register_converter('timestamp', convert_timestamp)
+        for reg in regs_list:
+            if not reg:
+                logging.debug(['GET_GROUPED_RECORDS STRANGE registered_at', reg])
+            else:
+                sql_query = f'SELECT rowid,* FROM records WHERE registered_at={reg[0]};'
                 logging.debug(sql_query)
                 res = self.cur.execute(sql_query)
                 if res:
                     result.append([self.record_as_dict(v) for v in res.fetchall()])
-            logging.debug(result)
-            return result, f'SUCCESS {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
-        return None, f'EMPTY RECORDS {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        if result and result[0]:
+            logging.debug(['GET_GROUPED_RECORDS', result])
+            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+        return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY RECORDS'
 
     def clear_records(self, ids: list):
         if not self.cur:
-            return None, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         sql_query = f'DELETE FROM records WHERE rowid IN {tuple(ids)};'
         logging.debug(sql_query)
         self.cur.execute(sql_query)
-        return self.cur.rowcount, f'FINISHED {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        return self.cur.rowcount, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} FINISHED'
