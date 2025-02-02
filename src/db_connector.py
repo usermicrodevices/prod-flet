@@ -42,22 +42,38 @@ class DbConnector():
     def update_products(self, *args, **kwargs):
         if not self.cur:
             return False, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        updated = 0
         if 'data' in kwargs:
             try:
-                self.cur.executemany('INSERT INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp)', kwargs.get('data', []))
-            except sqlite3.IntegrityError as e:
-                updated = 0
-                for v in kwargs.get('data', []):
-                    try:
-                        self.cur.execute(f'''UPDATE products SET name='{v["name"]}', article='{v["article"]}', barcodes="{v['barcodes']}", qrcodes="{v['qrcodes']}", cost='{v["cost"]}', price='{v["price"]}', currency='{v["currency"]}', unit='{v["unit"]}', grp="{v['grp']}" WHERE id={v['id']};''')
-                    except Exception as e:
-                        logging.debug([e, f'{v}'])
-                    else:
-                        updated += 1
-                logging.debug(['UPDATED PRODUCTS', updated])
+                self.cur.executemany('INSERT INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp);', kwargs.get('data', []))
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                if 'UNIQUE constraint failed' not in f'{e}':
+                    logging.debug(['UPDATED PRODUCTS EXECUTEMANY INSERT', e])
+                try:
+                    self.cur.executemany('UPDATE products SET name=:name, article=:article, barcodes=:barcodes, qrcodes=:qrcodes, cost=:cost, price=:price, currency=:currency, unit=:unit, grp=:grp WHERE id=:id;', kwargs.get('data', []))
+                except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                    logging.debug(['UPDATED PRODUCTS EXECUTEMANY UPDATE', e])
+                    for v in kwargs.get('data', []):
+                        sql_query = f'''UPDATE products SET name='{v["name"]}', article='{v["article"]}', barcodes="{v['barcodes']}", qrcodes="{v['qrcodes']}", cost='{v["cost"]}', price='{v["price"]}', currency="{v['currency']}", unit="{v['unit']}", grp="{v['grp']}" WHERE id={v['id']};'''
+                        try:
+                            self.cur.execute(sql_query)
+                        except Exception as e:
+                            logging.debug([e, sql_query])
+                        else:
+                            updated += 1
+                    logging.debug(['UPDATED PRODUCTS', updated])
+                except Exception as e:
+                    return False, f'{e} {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+                else:
+                    logging.debug('EXECUTEMANY UPDATE SUCCESS')
+                    updated = self.cur.rowcount
             except Exception as e:
                 return False, f'{e} {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            else:
+                logging.debug('EXECUTEMANY INSERT SUCCESS')
+                updated = self.cur.rowcount
             #self.conn.commit()
+        logging.debug(['UPDATED PRODUCTS', updated])
         return True, f'SUCCESS {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
 
     def get_product(self, *args, **kwargs):

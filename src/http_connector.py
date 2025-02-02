@@ -62,6 +62,7 @@ class HttpConnector():
             logging.debug(['🍰SESSION.COOKIES🍰', self.session.cookies])
             if response.status_code == 200:
                 self.auth_succes = True
+                self.session.headers['X-CSRFToken'] = self.session.cookies.get('csrftoken', parser.csrfmiddlewaretoken)
         else:
             self.alert(self.url_admin, 'error authorization')
 
