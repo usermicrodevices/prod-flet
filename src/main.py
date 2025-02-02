@@ -140,11 +140,10 @@ async def main(page: ft.Page):
 
     basket = ft.ExpansionPanelList(
         expand_icon_color = ft.Colors.GREEN,
-        elevation = 8,
+        elevation = 4,
         divider_color=ft.Colors.GREEN,
         #on_change=handle_change_expansion_panel_item,
-        spacing = 0,
-        #controls = []
+        spacing = 0
     )
 
     def handle_delete_expansion_panel_item(e: ft.ControlEvent):
@@ -184,26 +183,37 @@ async def main(page: ft.Page):
             sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
             item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
         else:
+            font_size = page.client_storage.get('basket_font_size')
             str_price = f'{product['price']}'.strip('0').strip('.')
-            ctrl_price = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREY_100)
-            ctrl_currency = ft.Text(product['currency']['name'], bgcolor=ft.Colors.GREEN_100)
-            ctrl_sum = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100)
-            ctrl_count = ft.TextField('1.0', expand=2, content_padding=0, suffix_text=product['unit']['label'],
+            ctrl_price = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREY_100, size=font_size)
+            ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
+            ctrl_sum = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
+            ctrl_count = ft.TextField('1.0',
+                expand=3,
+                text_size=font_size,
+                content_padding=0,
+                #suffix_text=product['unit']['label'],
                 input_filter=FloatNumbersOnlyInputFilter(),
                 keyboard_type=ft.KeyboardType.NUMBER,
                 text_align=ft.TextAlign.RIGHT,
                 on_change=basket_change_count,
                 data = {'product':product, 'ctrl_sum':ctrl_sum})
-            ctrl_product = ft.Text(f"{product['name'][:20]}")
-            row_controls = [
-                ft.Container(ctrl_product, margin=0, padding=ft.padding.only(right=2), expand=6),
-                ft.Container(ctrl_price, margin=0, padding=ft.padding.only(right=2), expand=2),
+            ctrl_product = ft.Text(f"{product['name']}", size=font_size)
+            ctrl_unit = ft.Text(product['unit']['label'], size=font_size-2)
+            subtitle_controls = [
+                #ft.Container(ctrl_product, margin=0, padding=ft.padding.only(right=2), expand=6),
+                ft.Container(ctrl_price, margin=0, padding=ft.padding.only(right=2), expand=3),
                 ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1),
                 ctrl_count,
-                ft.Container(ctrl_sum, margin=0, padding=0, expand=2)
+                ft.Container(ctrl_unit, margin=0, padding=ft.padding.only(left=2), expand=1),
+                ft.Container(ctrl_sum, margin=0, padding=0, expand=3),
+                ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1)
             ]
             exp = ft.ExpansionPanel(bgcolor = ft.Colors.GREEN_100,
-                header = ft.Container(ft.ListTile(title = ft.Row(row_controls, spacing=0)), margin=0, padding=0),
+                header = ft.Container(ft.ListTile(
+                    title = ft.Row([ctrl_product], spacing=0),
+                    subtitle = ft.Row(subtitle_controls, spacing=0)
+                    ), margin=0, padding=0),
                 data = {'product':product, 'ctrl_count':ctrl_count, 'ctrl_sum':ctrl_sum})
             exp.content = ft.ListTile(title=ft.Text(product['article']),
                 subtitle=ft.Text(f"{product['name']} - {product['barcodes']}"),
