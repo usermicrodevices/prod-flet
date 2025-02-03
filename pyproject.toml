@@ -7,8 +7,8 @@ requires-python = ">=3.10"
 dependencies = [
   "flet>=0.26.0",
   "opencv-python>=4.9.0",
-  "pillow>=10.2.0",
   "requests>=2.32.3",
+  #"pillow>=10.2.0",
   #"zxing_cpp>=2.3.0"
   #"pyzbar>=0.1.9",
   #"libzbar0t64>=0.23"
