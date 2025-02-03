@@ -4,7 +4,7 @@ frontend for ["prod"](https://github.com/usermicrodevices/prod/) (warehouse syst
 [![badge](https://img.shields.io/badge/license-MIT-blue)](https://github.com/usermicrodevices/prod/blob/main/LICENSE)
 
 ![image](./screen.png "main screen")
-![image](./phone-screen.png "main screen")
+![image](./phone-screen.jpg "main screen")
 
 # installation
 ```
