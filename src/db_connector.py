@@ -43,15 +43,32 @@ class DbConnector():
 
     def __init__(self, *args, **kwargs):
         self.conn = sqlite3.connect(kwargs.get('file_name', 'prod.db'), autocommit=True, check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
+        #self.conn.create_collation('UNOCASE', self.nocase_collation)
+        #self.conn.text_factory = lambda data: str(data, encoding='utf8', errors='surrogateescape')
+        self.conn.create_function('CASEFOLD', 1, lambda v: v.casefold(), deterministic=True)
         self.cur = self.conn.cursor()
-        self.cur.execute('CREATE TABLE IF NOT EXISTS products(id UNIQUE PRIMARY KEY, name TEXT, article TEXT, barcodes TEXT, qrcodes TEXT, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB);')
-        self.cur.execute('CREATE TABLE IF NOT EXISTS records(doc_type TEXT DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB);')
+        if not self.cur:
+            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID')
+        else:
+            #self.cur.execute('PRAGMA ENCODING=UTF16;')
+            #self.cur.execute('CREATE TABLE IF NOT EXISTS products(id UNIQUE PRIMARY KEY, name VARCHAR COLLATE UNOCASE, article VARCHAR COLLATE UNOCASE, barcodes VARCHAR, qrcodes VARCHAR COLLATE UNOCASE, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB);')
+            #self.cur.execute('CREATE INDEX IF NOT EXISTS prods ON products (name COLLATE UNOCASE, article COLLATE UNOCASE, barcodes, qrcodes COLLATE UNOCASE);')
+            #self.cur.execute('REINDEX prods;')
+            self.cur.execute('CREATE TABLE IF NOT EXISTS products(id UNIQUE PRIMARY KEY, name VARCHAR , article VARCHAR, barcodes VARCHAR, qrcodes VARCHAR, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB);')
+            self.cur.execute('CREATE TABLE IF NOT EXISTS records(doc_type VARCHAR DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB);')
 
     def __del__(self):
         if self.cur:
             self.cur.close()
         if self.conn:
             self.conn.close()
+
+    #def nocase_collation(self, a: str, b: str):
+        #if a.casefold() == b.casefold():
+            #return 0
+        #if a.casefold() < b.casefold():
+            #return -1
+        #return 1
 
     def product_as_dict(self, v):
         return {'id':v[0],
@@ -71,7 +88,7 @@ class DbConnector():
 
     def update_products(self, *args, **kwargs):
         if not self.cur:
-            return False, f'CURSOR INVALID {self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+            return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         updated = 0
         if 'data' in kwargs:
             try:
@@ -91,19 +108,21 @@ class DbConnector():
                             logging.debug([e, sql_query])
                         else:
                             updated += 1
-                    logging.debug(['UPDATED PRODUCTS', updated])
+                    #logging.debug(['UPDATED PRODUCTS', updated])
                 except Exception as e:
                     return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
                 else:
-                    logging.debug('EXECUTEMANY UPDATE SUCCESS')
+                    logging.debug('👌EXECUTEMANY UPDATE SUCCESS')
                     updated = self.cur.rowcount
             except Exception as e:
                 return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}{e}'
             else:
-                logging.debug('EXECUTEMANY INSERT SUCCESS')
+                logging.debug('👌EXECUTEMANY INSERT SUCCESS')
                 updated = self.cur.rowcount
             #self.conn.commit()
-        logging.debug(['UPDATED PRODUCTS', updated])
+        #if updated:
+            #self.cur.execute('REINDEX prods;')
+        logging.debug(['👌UPDATED PRODUCTS👌', updated])
         return True, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def get_product(self, *args, **kwargs):
@@ -115,10 +134,12 @@ class DbConnector():
         s = args[0]
         if not isinstance(s, (int, float)) and not s:
             return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING [{s}]'
-        where_exp = f'''WHERE name LIKE ('%{s}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
+        #where_exp = f'''WHERE name LIKE ('%{s}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
+        where_exp = f'''WHERE CASEFOLD(name) LIKE ('%{f"{s}".casefold()}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
         if s.isdigit():
-            where_exp += f''' OR id={s}'''
-        search_sql = f'''SELECT * FROM products {where_exp} LIMIT 1;'''
+            where_exp += f' OR id={s}'
+        search_sql = f'SELECT * FROM products {where_exp} LIMIT 1;'
+        logging.debug(['✅☑GET_PRODUCT☑✅', search_sql])
         try:
             res = self.cur.execute(search_sql)
         except Exception as e:

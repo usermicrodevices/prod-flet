@@ -33,6 +33,23 @@ async def main(page: ft.Page):
         alert_dlg.content = ft.Text(msg)
         page.open(alert_dlg)
 
+    page.scan_img = None
+    def scan_barcode_close():
+        if page.scan_img in content_panel.controls:
+            content_panel.controls.remove(page.scan_img)
+            content_panel.update()
+        if page.scan_img:
+            page.scan_img.close()
+            page.scan_img = None
+
+    def scan_barcode(evt: ft.ControlEvent):
+        if not page.scan_img:
+            page.scan_img = CameraMaster(page=page, reader_callback=product_add, width=320, height=240, expand=True)
+            content_panel.controls.insert(0, page.scan_img)
+            content_panel.update()
+        else:
+            scan_barcode_close()
+
     page.db_conn = None
     page.http_conn = None
     page.products = {}
@@ -151,6 +168,7 @@ async def main(page: ft.Page):
         page.update()
 
     def basket_sum_final_refresh():
+        scan_barcode_close()
         sum_final = 0.0
         for item in basket.controls:
             if item.data['ctrl_sum'].value:
@@ -183,7 +201,7 @@ async def main(page: ft.Page):
             sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
             item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
         else:
-            font_size = page.client_storage.get('basket_font_size')
+            font_size = int(page.client_storage.get('basket_font_size'))
             str_price = f'{product['price']}'.strip('0').strip('.')
             ctrl_price = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREY_100, size=font_size)
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
@@ -298,12 +316,6 @@ async def main(page: ft.Page):
     content_panel = ft.core.list_view.ListView(controls=[basket])
 
     logging.debug(f'w={page.window.width:.2f}; h={page.window.height:.2f}; {page.client_ip}; {page.client_user_agent}; {page.pwa}')
-
-    def scan_barcode(evt: ft.ControlEvent):
-        img = ft.Image(src_base64='', src='', width=320, height=240)
-        page.add(img)
-        page.update()
-        camera_master = CameraMaster(page, img, is_a_qr_reader=True, qr_reader_callback=product_add)
 
     def handle_dismiss_navigation_drawer(evt: ft.ControlEvent):
         logging.debug(f'DISMISS {evt.control}')

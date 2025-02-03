@@ -1,4 +1,4 @@
-import base64, io, threading
+import base64, io, logging, threading
 
 import flet as ft
 import cv2#pip install opencv-python
@@ -8,43 +8,48 @@ from PIL import Image#pip install pillow
 #import zxingcpp
 from third_party.EAN13_Reader import decode_simple
 
+
+DEFAULT_BASE64 = '''data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M224%20387.814V512L32 320l192-192v126.912C447.375 260.152 437.794 103.016 380.93 0 521.287 151.707 491.48 394.785 224 387.814z'/%3E%3C/svg%3E'''
+
+
 class CryptoHandlerMaster():
     def validate_data(self, value):
         return True, value.data.decode('utf-8')
 
 
-class CameraMaster():
-    def __init__(self, page: ft.Page, camera_img_control : ft.Image | ft.Container, is_a_qr_reader : bool = False, qr_reader_callback : callable = None):
-        self.page = page
-        self.camera_img_control = camera_img_control
-        self.is_a_qr_reader = is_a_qr_reader
-        self.qr_reader_callback = qr_reader_callback
+class CameraMaster(ft.Image):
+
+    def __init__(self, *args, **kwargs):
+        page = kwargs.pop('page')
+        logging.debug(['‼⚠ PAGE ⚠‼', page])
+        self.qr_reader_callback = kwargs.pop('reader_callback')
+        self.is_a_qr_reader = kwargs.pop('is_qr_reader', True)
+
+        kwargs['fit'] = ft.ImageFit.FILL
+        kwargs['src_base64'] = DEFAULT_BASE64
+
+        super().__init__(*args, **kwargs)
+
         self.crypto_handler = CryptoHandlerMaster()
-        self.camera_img_control.fit = ft.ImageFit.FILL
 
+        self.cap = None
         # Find the available camera
-        self.camera_index = self.find_available_camera()
-        if self.camera_index is None:
-            print("No available camera found.")
-            return
-
-        # Initialize the camera
-        self.cap = cv2.VideoCapture(self.camera_index)
-
-        # Create the image control
-        # img = ft.Image(src_base64="", width=640, height=480)
+        camera_index = self.find_available_camera()
+        if camera_index is None:
+            logging.debug('‼⚠ No available camera found. ⚠‼')
+        else:# Initialize the camera
+            self.cap = cv2.VideoCapture(camera_index)
 
         # Event to control the update loop
         self.stop_event = threading.Event()
-
         # Start the periodic image update in a separate thread
         self.update_thread = threading.Thread(target=self.update_image)
         self.update_thread.start()
 
-        # Attach the cleanup function to the page close event
-        self.page.on_close = self.on_close
+        self.page = page
 
-        self.page.update()
+    def __del__(self):
+        self.close()
 
     def is_mounted(self) -> bool:
         if self.page is None:
@@ -65,11 +70,19 @@ class CameraMaster():
 
     def update_image(self):
         while not self.stop_event.is_set():
-            self.ret, self.frame = self.cap.read()
-            if self.ret:
+            if not self.cap:
+                camera_index = self.find_available_camera()
+                if camera_index is None:
+                    logging.debug('‼⚠ No available camera found. ⚠‼')
+                    self.stop_event.wait(5)
+                    continue
+                else:
+                    self.cap = cv2.VideoCapture(camera_index)
+            ret, frame = self.cap.read()
+            if ret:
                 if self.is_a_qr_reader == True:
                     # Get frame dimensions
-                    height, width, _ = self.frame.shape
+                    height, width, _ = frame.shape
 
                     # Define the rectangle dimensions (centered)
                     rect_width, rect_height = 400, 350
@@ -80,50 +93,49 @@ class CameraMaster():
                     style = 'dashed'
 
                     # Apply dark overlay outside the rectangle
-                    self.frame = self.apply_overlay(self.frame, top_left, bottom_right)
+                    frame = self.apply_overlay(frame, top_left, bottom_right)
 
                     # Draw the dashed rectangle on top of the frame
-                    self.drawrect(self.frame, top_left, bottom_right, color, thickness, style)
+                    self.drawrect(frame, top_left, bottom_right, color, thickness, style)
 
                     # Scan QR codes within the rectangle
-                    self.frame, valid_objects = self.scan_qr_codes_within_rect(self.frame, top_left, bottom_right)
+                    frame, valid_objects = self.scan_qr_codes_within_rect(frame, top_left, bottom_right)
                     if valid_objects and self.qr_reader_callback:
-                        #valid_objects = zxingcpp.read_barcodes(self.frame)
+                        #valid_objects = zxingcpp.read_barcodes(frame)
                         # for obj in valid_objects:
                         #     if self.qr_reader_callback != None and obj['is_valid'] == True:
                         #         self.qr_reader_callback(obj['data'])
-                        ean13, is_valid, thresh = decode_simple.decode(self.frame)
+                        ean13, is_valid, thresh = decode_simple.decode(frame)
                         if self.qr_reader_callback != None and is_valid:
                             self.qr_reader_callback(ean13)
+                            self.open = False
+                            self.parent.update()
+                            #self.page.close(self)
 
-                # Convert the frame to RGB
-                self.frame_rgb = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-                # Convert the frame to PIL Image
-                self.pil_im = Image.fromarray(self.frame_rgb)
-                # Save the image to a bytes buffer
-                self.buf = io.BytesIO()
-                self.pil_im.save(self.buf, format='PNG')
-                # Encode the bytes buffer to base64
-                self.img_str = base64.b64encode(self.buf.getvalue()).decode()
-                # Update the Flet image control
-                self.camera_img_control.src_base64 = self.img_str
-                # self.camera_img_control.image_src_base64 = self.img_str
+                #pil_im = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                #frame_buf = cv2.threshold(frame, 127, 255, cv2.THRESH_BINARY)[1]
+                #pil_im = Image.fromarray(frame_buf)
+                pil_im = Image.fromarray(cv2.threshold(frame, 127, 255, cv2.THRESH_BINARY)[1])
+                buf = io.BytesIO()
+                pil_im.save(buf, format='PNG')
+                #self.src_base64 = base64.b64encode(buf.getvalue()).decode()
+                self.srcBase64 = base64.b64encode(buf.getvalue()).decode()
                 try:
-                    self.page.update()
+                    self.update()
                 except Exception:
                     break
 
-            # Sleep for 100 ms
-            self.stop_event.wait(0.1)
+            # Sleep for XXX ms
+            self.stop_event.wait(0.01)
 
-    def on_close(self, e):
-        # print("Camera closed")
+    def close(self):
         self.stop_event.set()
-        self.cap.release()  # Release the camera
+        if self.cap:
+            self.cap.release()
         self.update_thread.join()
 
-    def set_camera_img_control(self, camera_img_control : ft.Image | ft.Container):
-        self.camera_img_control = camera_img_control
+    def on_close(self, e):
+        self.close()
 
     def drawline(self, img, pt1, pt2, color, thickness=1, style='dashed', dash_length=10, gap_length=10):
         dist = ((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2) ** 0.5
