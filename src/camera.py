@@ -9,7 +9,7 @@ from PIL import Image#pip install pillow
 from third_party.EAN13_Reader import decode_simple
 
 
-DEFAULT_BASE64 = '''data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M224%20387.814V512L32 320l192-192v126.912C447.375 260.152 437.794 103.016 380.93 0 521.287 151.707 491.48 394.785 224 387.814z'/%3E%3C/svg%3E'''
+DEFAULT_BASE64 = 'R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
 
 
 class CryptoHandlerMaster():
@@ -51,6 +51,12 @@ class CameraMaster(ft.Image):
     def __del__(self):
         self.close()
 
+    def __str__(self) -> str:
+        return 'CameraMaster'
+
+    def __repr__(self) -> str:
+        return 'CameraMaster'
+
     def is_mounted(self) -> bool:
         if self.page is None:
             return False
@@ -78,6 +84,8 @@ class CameraMaster(ft.Image):
                     continue
                 else:
                     self.cap = cv2.VideoCapture(camera_index)
+
+            #logging.basicConfig(level=logging.INFO)
             ret, frame = self.cap.read()
             if ret:
                 if self.is_a_qr_reader == True:
@@ -108,18 +116,13 @@ class CameraMaster(ft.Image):
                         ean13, is_valid, thresh = decode_simple.decode(frame)
                         if self.qr_reader_callback != None and is_valid:
                             self.qr_reader_callback(ean13)
-                            self.open = False
-                            self.parent.update()
-                            #self.page.close(self)
 
-                #pil_im = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                #frame_buf = cv2.threshold(frame, 127, 255, cv2.THRESH_BINARY)[1]
-                #pil_im = Image.fromarray(frame_buf)
                 pil_im = Image.fromarray(cv2.threshold(frame, 127, 255, cv2.THRESH_BINARY)[1])
+                #pil_im = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 buf = io.BytesIO()
                 pil_im.save(buf, format='PNG')
-                #self.src_base64 = base64.b64encode(buf.getvalue()).decode()
-                self.srcBase64 = base64.b64encode(buf.getvalue()).decode()
+                self.src_base64 = base64.b64encode(buf.getvalue()).decode()
+                #self._set_attr_internal('srcBase64', base64.b64encode(buf.getvalue()).decode())
                 try:
                     self.update()
                 except Exception:
@@ -127,6 +130,7 @@ class CameraMaster(ft.Image):
 
             # Sleep for XXX ms
             self.stop_event.wait(0.01)
+            #logging.basicConfig(level=logging.DEBUG)
 
     def close(self):
         self.stop_event.set()
