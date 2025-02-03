@@ -4,6 +4,7 @@ frontend for ["prod"](https://github.com/usermicrodevices/prod/) (warehouse syst
 [![badge](https://img.shields.io/badge/license-MIT-blue)](https://github.com/usermicrodevices/prod/blob/main/LICENSE)
 
 ![image](./screen.png "main screen")
+![image](./phone-screen.png "main screen")
 
 # installation
 ```
@@ -11,7 +12,7 @@ git clone git@github.com:usermicrodevices/prod-flet.git
 cd prod-flet
 python -m venv venv
 . ./venv/bin/activate
-pip install -r requirements.txt
+pip install .
 ```
 
 # running
