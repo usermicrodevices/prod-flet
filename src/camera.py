@@ -2,7 +2,7 @@ import base64, io, logging, threading
 
 import flet as ft
 import cv2#pip install opencv-python
-from PIL import Image#pip install pillow
+#from PIL import Image#pip install pillow
 #from pyzbar import pyzbar#pip install pyzbar # but it required C-extension libzbar and not build with mobile platforms
 #from third_party.pyzbar import pyzbar#fixed version with C-extensions included
 #import zxingcpp
@@ -117,12 +117,16 @@ class CameraMaster(ft.Image):
                         if self.qr_reader_callback != None and is_valid:
                             self.qr_reader_callback(ean13)
 
-                pil_im = Image.fromarray(cv2.threshold(frame, 127, 255, cv2.THRESH_BINARY)[1])
+                #pil_im = Image.fromarray(cv2.threshold(frame, 127, 255, cv2.THRESH_BINARY)[1])
                 #pil_im = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                buf = io.BytesIO()
-                pil_im.save(buf, format='PNG')
-                self.src_base64 = base64.b64encode(buf.getvalue()).decode()
+                #buf = io.BytesIO()
+                #pil_im.save(buf, format='PNG')
+                #self.src_base64 = base64.b64encode(buf.getvalue()).decode()
                 #self._set_attr_internal('srcBase64', base64.b64encode(buf.getvalue()).decode())
+
+                _, buf = cv2.imencode('.png', frame)
+                self.src_base64 = base64.b64encode(buf).decode('utf-8')
+
                 try:
                     self.update()
                 except Exception:

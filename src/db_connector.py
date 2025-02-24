@@ -87,20 +87,22 @@ class DbConnector():
         return {'rowid':v[0], 'doc_type':v[1], 'registered_at':v[2], 'product':v[3], 'count':v[4], 'cost':v[5], 'price':v[6], 'sum_final':v[7], 'currency':eval(v[8]) if v[8] else {}}
 
     def update_products(self, *args, **kwargs):
-        if not self.cur:
-            return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         updated = 0
-        if 'data' in kwargs:
+        if not self.cur:
+            return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+        data = kwargs.get('data', [])
+        logging.debug(['👌RECEIVED PRODUCTS👌', len(data)])
+        if data:
             try:
-                self.cur.executemany('INSERT INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp);', kwargs.get('data', []))
+                self.cur.executemany('INSERT INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp);', data)
             except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
                 if 'UNIQUE constraint failed' not in f'{e}':
                     logging.debug(['UPDATED PRODUCTS EXECUTEMANY INSERT', e])
                 try:
-                    self.cur.executemany('UPDATE products SET name=:name, article=:article, barcodes=:barcodes, qrcodes=:qrcodes, cost=:cost, price=:price, currency=:currency, unit=:unit, grp=:grp WHERE id=:id;', kwargs.get('data', []))
+                    self.cur.executemany('UPDATE products SET name=:name, article=:article, barcodes=:barcodes, qrcodes=:qrcodes, cost=:cost, price=:price, currency=:currency, unit=:unit, grp=:grp WHERE id=:id;', data)
                 except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
                     logging.debug(['UPDATED PRODUCTS EXECUTEMANY UPDATE', e])
-                    for v in kwargs.get('data', []):
+                    for v in data:
                         sql_query = f'''UPDATE products SET name='{v["name"]}', article='{v["article"]}', barcodes="{v['barcodes']}", qrcodes="{v['qrcodes']}", cost='{v["cost"]}', price='{v["price"]}', currency="{v['currency']}", unit="{v['unit']}", grp="{v['grp']}" WHERE id={v['id']};'''
                         try:
                             self.cur.execute(sql_query)
@@ -110,12 +112,12 @@ class DbConnector():
                             updated += 1
                     #logging.debug(['UPDATED PRODUCTS', updated])
                 except Exception as e:
-                    return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
+                    return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
                 else:
                     logging.debug('👌EXECUTEMANY UPDATE SUCCESS')
                     updated = self.cur.rowcount
             except Exception as e:
-                return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}{e}'
+                return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}{e}'
             else:
                 logging.debug('👌EXECUTEMANY INSERT SUCCESS')
                 updated = self.cur.rowcount
@@ -123,7 +125,7 @@ class DbConnector():
         #if updated:
             #self.cur.execute('REINDEX prods;')
         logging.debug(['👌UPDATED PRODUCTS👌', updated])
-        return True, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+        return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def get_product(self, *args, **kwargs):
         if not self.cur:
@@ -138,12 +140,12 @@ class DbConnector():
         where_exp = f'''WHERE CASEFOLD(name) LIKE ('%{f"{s}".casefold()}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
         if s.isdigit():
             where_exp += f' OR id={s}'
-        search_sql = f'SELECT * FROM products {where_exp} LIMIT 1;'
-        logging.debug(['✅☑GET_PRODUCT☑✅', search_sql])
+        sql_search = f'SELECT * FROM products {where_exp} LIMIT 1;'
+        logging.debug(['✅☑GET_PRODUCT☑✅', sql_search])
         try:
-            res = self.cur.execute(search_sql)
+            res = self.cur.execute(sql_search)
         except Exception as e:
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {search_sql} {e}'
+            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {sql_search} {e}'
         else:
             v = res.fetchone()
             if v:
@@ -160,6 +162,19 @@ class DbConnector():
             result = [self.product_as_dict(v) for v in res.fetchall()]
         logging.debug(result)
         return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+
+    def get_products_count(self, *args, **kwargs):
+        if not self.cur:
+            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+        sql_count = 'SELECT COUNT(id) FROM products;'
+        logging.debug(['✅☑GET_PRODUCTS_COUNT☑✅', sql_count])
+        try:
+            res = self.cur.execute(sql_count)
+        except Exception as e:
+            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {sql_count} {e}'
+        else:
+            return res.fetchone()[0], f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+        return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} UNKNOWN ERROR'
 
     def insert_records(self, data):
         if not self.cur:
