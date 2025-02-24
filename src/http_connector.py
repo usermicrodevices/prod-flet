@@ -75,19 +75,25 @@ class HttpConnector():
                 self.alert(self.url_admin, 'error authorization')
         return 400
 
-    def get_products_cash(self):
-        logging.debug(['🎂GET🎂', self.url_products_cash])
+    def get_products_cash(self, prod_page=1, limit=100):
+        url_args = f'{self.url_products_cash}?limit={limit}&page={prod_page}'
+        logging.debug(['🎂GET🎂', url_args])
         try:
-            response = self.session.get(self.url_products_cash)
+            response = self.session.get(url_args)
         except Exception as e:
             logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
             return None
         logging.debug(['🎂RESPONSE🎂', response.status_code])
+        logging.debug(['🎂RESPONSE.HEADERS🎂', response.headers])
         logging.debug(['🎂SESSION.COOKIES🎂', self.session.cookies])
         logging.debug(['🎂SESSION.HEADERS🎂', self.session.headers])
-        data = eval(json.loads(response.content))
+        data = []
+        if response.status_code == 200:
+            data = eval(json.loads(response.content))
+        else:
+            logging.warning(['🎂RESPONSE.CONTENT🎂', json.loads(response.content)])
         logging.debug(['🎂PRODUCTS.LENGTH🎂', len(data)])
-        return data
+        return response.headers, data
 
     def post_doc_cash(self, data):
         json_data = json.dumps(data)

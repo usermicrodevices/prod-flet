@@ -33,6 +33,11 @@ async def main(page: ft.Page):
         alert_dlg.content = ft.Text(msg)
         page.open(alert_dlg)
 
+    page.status_ctrl = ft.Text()
+    def update_status_ctrl(val):
+        page.status_ctrl.value = val
+        page.status_ctrl.update()
+
     page.scan_img = None
     def scan_barcode_close():
         if page.scan_img in content_panel.controls:
@@ -61,12 +66,23 @@ async def main(page: ft.Page):
             return
         page.sync_products_running = True
         if page.http_conn.auth_succes:
-            prods = page.http_conn.get_products_cash()
-            result, msg = page.db_conn.update_products(data=prods)
-            if not result:
-                logging.error(['SYNC_PRODUCTS', msg, prods])
-            else:
-                logging.debug(['SYNC_PRODUCTS', result, msg])
+            def db_update_products(prods):
+                if prods:
+                    count_updated, msg = page.db_conn.update_products(data=prods)
+                    logging.debug(['UPDATED_PRODUCTS', count_updated, msg])
+                return count_updated
+            headers, prods = page.http_conn.get_products_cash()
+            updated_products = db_update_products(prods)
+            full_products, msg = page.db_conn.get_products_count()
+            update_status_ctrl(f'{full_products}/{updated_products}')
+            page_max = int(headers['page_max'])
+            logging.debug(['PAGE_MAX', page_max])
+            if page_max > 1:
+                for p in range(2, page_max):
+                    headers, prods = page.http_conn.get_products_cash(p)
+                    updated_products += db_update_products(prods)
+                    full_products, msg = page.db_conn.get_products_count()
+                    update_status_ctrl(f'{full_products}/{updated_products}')
         else:
             logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
             status_code = page.http_conn.auth()
@@ -300,8 +316,8 @@ async def main(page: ft.Page):
         controls=[
             ft.IconButton(icon=ft.Icons.MENU, icon_color=ft.Colors.WHITE, on_click=on_click_pagelet),
             #ft.SearchBar(bar_hint_text="Search products...", on_tap=on_search, on_submit=on_search, expand=True, autofocus=True)
-            ft.Container(expand=True),
-            #ft.Container(expand=True, content=ft.Column(search_ctrl)),
+            #ft.Container(expand=True),
+            ft.Container(page.status_ctrl, expand=True),
             #ft.IconButton(icon=ft.Icons.SEARCH, icon_color=ft.Colors.WHITE, on_click=on_search),
             #ft.IconButton(icon=ft.Icons.PRICE_CHECK, icon_color=ft.Colors.WHITE),
             ft.IconButton(icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE),

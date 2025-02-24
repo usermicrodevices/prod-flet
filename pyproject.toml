@@ -1,11 +1,11 @@
 [project]
 name = "prod"
-version = "0.1.0"
+version = "0.2.0"
 description = "prod client"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-  "flet>=0.26.0",
+  "flet>=0.27.0",
   "opencv-python>=4.9.0",
   "requests>=2.32.3",
   #"pillow>=10.2.0",
