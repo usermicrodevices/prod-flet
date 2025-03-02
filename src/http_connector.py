@@ -26,6 +26,7 @@ class HttpConnector():
         self.url_base = f'''{self.http_protocol}{self.http_host}{f':{self.http_port}' if self.http_port else ''}'''
         self.url_admin = f'{self.url_base}/admin/login/'
         self.url_loign = f'{self.url_base}/api/login/'
+        self.url_product = f'{self.url_base}/api/product/'
         self.url_products_cash = f'{self.url_base}/api/products/cash/'
         self.url_doc_cash = f'{self.url_base}/api/doc/cash/'
         self.page = page
@@ -76,20 +77,44 @@ class HttpConnector():
         return 400
 
     def get_products_cash(self, prod_page=1, limit=100):
+        data = []
         url_args = f'{self.url_products_cash}?limit={limit}&page={prod_page}'
         logging.debug(['🎂GET🎂', url_args])
         try:
             response = self.session.get(url_args)
         except Exception as e:
             logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
-            return None
+            return {}, data
         logging.debug(['🎂RESPONSE🎂', response.status_code])
         logging.debug(['🎂RESPONSE.HEADERS🎂', response.headers])
         logging.debug(['🎂SESSION.COOKIES🎂', self.session.cookies])
         logging.debug(['🎂SESSION.HEADERS🎂', self.session.headers])
-        data = []
         if response.status_code == 200:
             data = eval(json.loads(response.content))
+        else:
+            logging.warning(['🎂RESPONSE.CONTENT🎂', json.loads(response.content)])
+        logging.debug(['🎂PRODUCTS.LENGTH🎂', len(data)])
+        return response.headers, data
+
+    def get_product(self, prod_id=1):
+        data = {}
+        url_args = f'{self.url_product}{prod_id}/'
+        logging.debug(['🎂GET🎂', url_args])
+        try:
+            response = self.session.get(url_args)
+        except Exception as e:
+            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
+            return {}, data
+        logging.debug(['🎂RESPONSE🎂', response.status_code])
+        logging.debug(['🎂RESPONSE.HEADERS🎂', response.headers])
+        logging.debug(['🎂SESSION.COOKIES🎂', self.session.cookies])
+        logging.debug(['🎂SESSION.HEADERS🎂', self.session.headers])
+        if response.status_code == 200:
+            res = eval(json.loads(response.content).replace('null', 'None'))
+            if len(res):
+                data = res[0]['fields']
+                data['id'] = res[0]['pk']
+                data['count'] = response.headers.get('count', 0)
         else:
             logging.warning(['🎂RESPONSE.CONTENT🎂', json.loads(response.content)])
         logging.debug(['🎂PRODUCTS.LENGTH🎂', len(data)])
