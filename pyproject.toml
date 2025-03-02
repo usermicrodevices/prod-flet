@@ -15,6 +15,9 @@ dependencies = [
 ]
 
 [tool.flet]
+ndk.dir="~/Android/Sdk/ndk/25.1.8937393"
+sdk.dir="~/Android/Sdk"
+
 org = "com.github.usermicrodevices"
 # shown in window titles and about app dialogs on desktop.
 product = "prod-client"

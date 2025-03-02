@@ -5,7 +5,7 @@ from threading import current_thread
 from datetime import datetime
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 from camera import CameraMaster
 from settings_dialog import SettingsDialog
@@ -75,7 +75,7 @@ async def main(page: ft.Page):
             updated_products = db_update_products(prods)
             full_products, msg = page.db_conn.get_products_count()
             update_status_ctrl(f'{full_products}/{updated_products}')
-            page_max = int(headers['page_max'])
+            page_max = int(headers.get('page_max', 0))
             logging.debug(['PAGE_MAX', page_max])
             if page_max > 1:
                 for p in range(2, page_max):
@@ -213,11 +213,13 @@ async def main(page: ft.Page):
     def basket_add(product):
         item = basket_search(product)
         if item:
+            item.data['ctrl_count_from_server'].value = product['count']
             item.data['ctrl_count'].value = f'{float(item.data['ctrl_count'].value) + 1}'
             sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
             item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
         else:
             font_size = int(page.client_storage.get('basket_font_size'))
+            ctrl_count_from_server = ft.Text(product['count'], text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
             str_price = f'{product['price']}'.strip('0').strip('.')
             ctrl_price = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREY_100, size=font_size)
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
@@ -235,7 +237,7 @@ async def main(page: ft.Page):
             ctrl_product = ft.Text(f"{product['name']}", size=font_size)
             ctrl_unit = ft.Text(product['unit']['label'], size=font_size-2)
             subtitle_controls = [
-                #ft.Container(ctrl_product, margin=0, padding=ft.padding.only(right=2), expand=6),
+                ft.Container(ctrl_count_from_server, margin=0, padding=ft.padding.only(right=2), expand=3),
                 ft.Container(ctrl_price, margin=0, padding=ft.padding.only(right=2), expand=3),
                 ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1),
                 ctrl_count,
@@ -248,7 +250,7 @@ async def main(page: ft.Page):
                     title = ft.Row([ctrl_product], spacing=0),
                     subtitle = ft.Row(subtitle_controls, spacing=0)
                     ), margin=0, padding=0),
-                data = {'product':product, 'ctrl_count':ctrl_count, 'ctrl_sum':ctrl_sum})
+                data = {'product':product, 'ctrl_count_from_server':ctrl_count_from_server, 'ctrl_count':ctrl_count, 'ctrl_sum':ctrl_sum})
             exp.content = ft.ListTile(title=ft.Text(product['article']),
                 subtitle=ft.Text(f"{product['name']} - {product['barcodes']}"),
                 trailing=ft.IconButton(ft.Icons.DELETE, on_click=handle_delete_expansion_panel_item, data=exp))
@@ -292,6 +294,8 @@ async def main(page: ft.Page):
         page.add(ft.CupertinoActivityIndicator(radius=50, color=ft.Colors.RED, animating=True))
         product = product_search(code)
         if product:
+            headers, prod = page.http_conn.get_product(product['id'])
+            product['count'] = 0 if not prod else prod['count']
             page.basket_add(product)
         else:
             logging.debug(f'{code} NOT FOUND')
@@ -308,6 +312,8 @@ async def main(page: ft.Page):
         if evt.control.value:
             product_add(evt.control.value)
             evt.control.value = ''
+            evt.control.update()
+            evt.control.focus()
 
     def open_poducts(evt: ft.ControlEvent):
         page.open(ProductsDialog(page=page))
