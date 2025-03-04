@@ -160,6 +160,11 @@ async def main(page: ft.Page):
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
     page.run_thread(background_sync_sales)
 
+    bar_search_products = ft.SearchBar(bar_hint_text="Search products...",
+        #on_tap=on_search,
+        on_submit=on_search,
+        expand=3, autofocus=True)
+
     #def handle_change_expansion_panel_item(e: ft.ControlEvent):
         #logging.debug(f'{e.data}; {e.control}')
 
@@ -192,10 +197,11 @@ async def main(page: ft.Page):
         basket_sum_final.value = sum_final
         basket_sum_final.update()
 
-    def basket_crear():
+    def basket_clearing():
         basket.controls = []
         basket_sum_final.value = '0.0'
         page.update()
+        bar_search_products.control.focus()
 
     def basket_search(product):
         for item in basket.controls:
@@ -282,7 +288,7 @@ async def main(page: ft.Page):
                     local_records.append((data['type'], dtz_now, r['product'], float(r['count']), 0.0, float(r['price']), float(data['sum_final']), r['currency']))
                 result, msg = page.db_conn.insert_records(local_records)
                 logging.debug(['SAVE SALE TO LOCAL DB FINISH', result, msg])
-            basket_crear()
+            basket_clearing()
 
     def product_search(code: str):
         logging.info(['CODE', code])
@@ -295,7 +301,7 @@ async def main(page: ft.Page):
         product = product_search(code)
         if product:
             headers, prod = page.http_conn.get_product(product['id'])
-            product['count'] = 0 if not prod else prod['count']
+            product['count'] = '-' if not prod else prod['count']
             page.basket_add(product)
         else:
             logging.debug(f'{code} NOT FOUND')
@@ -329,7 +335,7 @@ async def main(page: ft.Page):
             ft.IconButton(icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE),
             #ft.IconButton(icon=ft.Icons.POINT_OF_SALE, icon_color=ft.Colors.WHITE),
             ft.FloatingActionButton(icon=ft.Icons.ADD, on_click=open_poducts),
-            ft.FloatingActionButton(icon=ft.Icons.DELETE, on_click=lambda evt: basket_crear())
+            ft.FloatingActionButton(icon=ft.Icons.DELETE, on_click=lambda evt: basket_clearing())
         ]
     )
 
@@ -358,11 +364,6 @@ async def main(page: ft.Page):
                 page.window.close()
         pagelet.end_drawer.open = False
         pagelet.end_drawer.update()
-
-    bar_search_products = ft.SearchBar(bar_hint_text="Search products...",
-        #on_tap=on_search,
-        on_submit=on_search,
-        expand=3, autofocus=True)
 
     topbar = ft.CupertinoAppBar(
         #title=ft.SearchBar(bar_hint_text="Search products...", on_tap=on_search, on_submit=on_search, expand=True, autofocus=True),
