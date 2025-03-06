@@ -57,7 +57,7 @@ class ProductsDialog(ft.AlertDialog):
     def on_select(self, evt):
         logging.debug(['ON_SELECT', evt.data, evt.control.data])
         if evt.control.data:
-            self.page.basket_add(evt.control.data)
+            self.page.basket.add(evt.control.data)
         self.page.close(self)
 
     def handle_action_click(self, evt):

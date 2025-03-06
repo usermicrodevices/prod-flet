@@ -182,6 +182,7 @@ class DbConnector():
         if not data:
             return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY DATA'
         else:
+            logging.warning(data)
             try:
                 self.cur.executemany('INSERT INTO records VALUES(:doc_type, :registered_at, :product, :count, :cost, :price, :sum_final, :currency)', data)
             except Exception as e:
