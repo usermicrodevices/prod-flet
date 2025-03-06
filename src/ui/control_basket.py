@@ -1,0 +1,139 @@
+import flet as ft
+
+import logging
+
+from datetime import datetime
+
+
+class FloatNumbersOnlyInputFilter(ft.InputFilter):
+    def __init__(self):
+        super().__init__(regex_string=r"^[0-9]*\.[0-9]{0,3}$")
+
+
+class BasketControl(ft.ExpansionPanelList):
+
+    sum_final = ft.TextField('0.0', expand=1,
+        content_padding=0,
+        input_filter=FloatNumbersOnlyInputFilter(),
+        keyboard_type=ft.KeyboardType.NUMBER,
+        text_align=ft.TextAlign.RIGHT,
+        #on_change=change_basket_sum_final,
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.page = kwargs.pop('page')
+        #kwargs['on_change'] = self.handle_change_expansion_panel_item
+        super().__init__(*args, **kwargs)
+
+    #def handle_change_expansion_panel_item(self, e: ft.ControlEvent):
+        #logging.debug(f'{e.data}; {e.control}')
+
+    def clearing(self):
+        self.controls = []
+        self.sum_final.value = '0.0'
+        self.page.update()
+        self.page.bar_search_products.focus()
+
+    def sum_final_refresh(self):
+        self.page.scan_barcode_close()
+        sum_final = 0.0
+        for item in self.controls:
+            if item.data['ctrl_sum'].value:
+                sum_final += float(item.data['ctrl_sum'].value)
+        self.sum_final.value = sum_final
+        self.sum_final.update()
+
+    def search(self, product):
+        for item in self.controls:
+            if product['id'] == item.data['product']['id']:
+                return item
+        return None
+
+    def on_change_product_count(self, evt: ft.ControlEvent):
+        logging.debug(['CHANGE_BASKET_COUNT', evt.control.value, evt.data])
+        sum_product = float(evt.control.value) * float(evt.control.data['product']['price'])
+        evt.control.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
+        evt.control.data['ctrl_sum'].update()
+        self.sum_final_refresh()
+
+    def on_click_delete_item(self, e: ft.ControlEvent):
+        self.controls.remove(e.control.data)
+        #self.page.update()
+        self.update()
+
+    def add(self, product):
+        item = self.search(product)
+        if item:
+            item.data['ctrl_count_from_server'].value = product['count']
+            item.data['ctrl_count'].value = f'{float(item.data['ctrl_count'].value) + 1}'
+            sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
+            item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
+        else:
+            font_size = int(self.page.client_storage.get('basket_font_size'))
+            ctrl_count_from_server = ft.Text(product.get('count', '-'), text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
+            str_price = f'{product['price']}'.strip('0').strip('.')
+            ctrl_price = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREY_100, size=font_size)
+            ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
+            ctrl_sum = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
+            ctrl_count = ft.TextField('1.0',
+                expand=3,
+                text_size=font_size,
+                content_padding=0,
+                #suffix_text=product['unit']['label'],
+                input_filter=FloatNumbersOnlyInputFilter(),
+                keyboard_type=ft.KeyboardType.NUMBER,
+                text_align=ft.TextAlign.RIGHT,
+                on_change=self.on_change_product_count,
+                data = {'product':product, 'ctrl_sum':ctrl_sum})
+            ctrl_product = ft.Text(f"{product['name']}", size=font_size)
+            ctrl_unit = ft.Text(product['unit']['label'], size=font_size-2)
+            subtitle_controls = [
+                ft.Container(ctrl_count_from_server, margin=0, padding=ft.padding.only(right=2), expand=3),
+                ft.Container(ctrl_price, margin=0, padding=ft.padding.only(right=2), expand=3),
+                ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1),
+                ctrl_count,
+                ft.Container(ctrl_unit, margin=0, padding=ft.padding.only(left=2), expand=1),
+                ft.Container(ctrl_sum, margin=0, padding=0, expand=3),
+                ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1)
+            ]
+            exp = ft.ExpansionPanel(bgcolor = ft.Colors.GREEN_100,
+                header = ft.Container(ft.ListTile(
+                    title = ft.Row([ctrl_product], spacing=0),
+                    subtitle = ft.Row(subtitle_controls, spacing=0)
+                    ), margin=0, padding=0),
+                data = {'product':product, 'ctrl_count_from_server':ctrl_count_from_server, 'ctrl_count':ctrl_count, 'ctrl_sum':ctrl_sum})
+            exp.content = ft.ListTile(title=ft.Text(product['article']),
+                subtitle=ft.Text(f"{product['name']} - {product['barcodes']}"),
+                trailing=ft.IconButton(ft.Icons.DELETE, on_click=self.on_click_delete_item, data=exp))
+            self.controls.insert(0, exp)
+        self.sum_final_refresh()
+        self.page.update()
+        logging.debug(f'ADD_PRODUCT: {product}')
+
+    def send_data(self, data_type='sale'):
+        if not self.controls:
+            alert('basket is empty', 'warning')
+        else:
+            dtz_now = datetime.now().astimezone()
+            data = {'sum_final':self.sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':data_type}
+            records = []
+            for item in self.controls:
+                record = {'product':item.data['product']['id'], 'count':item.data['ctrl_count'].value, 'price':item.data['product']['price'], 'currency':item.data['product']['currency']}
+                records.append(record)
+            data['records'] = records
+            sended = False
+            if self.page.http_conn.auth_succes:
+                sended = self.page.http_conn.post_doc_cash(data)
+                logging.debug(['SALE FINISH SEND TO SERVER', sended])
+            if not sended:
+                logging.debug('SAVE SALE TO LOCAL DB...')
+                local_records = []
+                for r in records:
+                    r['sum_final'] = data['sum_final']
+                    r['registered_at'] = dtz_now
+                    r['doc_type'] = data['type']
+                    r['cost'] = 0.0
+                    local_records.append(r)
+                result, msg = self.page.db_conn.insert_records(local_records)
+                logging.debug(['SAVE SALE TO LOCAL DB FINISH', result, msg])
+            self.clearing()
