@@ -15,9 +15,16 @@ python -m venv venv
 pip install .
 ```
 
+# fix ubuntu run missing dependencies
+```
+sudo apt update
+sudo apt install libmpv-dev libmpv2
+sudo ln -s /usr/lib/x86_64-linux-gnu/libmpv.so /usr/lib/libmpv.so.1
+```
+
 # running
 ```
-flet src/main.py
+flet run src/main.py
 ```
 
 # build android
