@@ -41,3 +41,9 @@ flet build linux
 ```
 flet build windows
 ```
+
+# pack as standalone executable file
+```
+pip install pyinstaller
+flet pack --icon kassa.png --name prod-flet src/main.py
+```
