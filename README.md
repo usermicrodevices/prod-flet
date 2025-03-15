@@ -47,3 +47,9 @@ flet build windows
 pip install pyinstaller
 flet pack --icon kassa.png --name prod-flet src/main.py
 ```
+
+# generate desktop and autostart files in linux Ubuntu for Gnome Desktop
+```
+sudo apt install gnome-startup-applications
+./gen_desk.sh
+```
