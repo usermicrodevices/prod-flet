@@ -240,6 +240,9 @@ async def main(page: ft.Page):
         elif evt.control.selected_index == 1:
             page.open(ProductsDialog(page=page))
         elif evt.control.selected_index == 2:
+            page.db_conn.clear_local_products()
+            sync_products()
+        elif evt.control.selected_index == 3:
             if page.platform == 'android':
                 import os
                 os._exit(0)
@@ -271,6 +274,7 @@ async def main(page: ft.Page):
             controls=[
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_COMMENT, label='➕'),
+                ft.NavigationDrawerDestination(icon=ft.Icons.LOCK_RESET, label='🔄'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.EXIT_TO_APP, label='🔚'),
             ],
         ),

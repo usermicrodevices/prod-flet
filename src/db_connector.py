@@ -94,7 +94,7 @@ class DbConnector():
         logging.debug(['👌RECEIVED PRODUCTS👌', len(data)])
         if data:
             try:
-                self.cur.executemany('INSERT INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp);', data)
+                self.cur.executemany('INSERT OR REPLACE INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp);', data)
             except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
                 if 'UNIQUE constraint failed' not in f'{e}':
                     logging.debug(['UPDATED PRODUCTS EXECUTEMANY INSERT', e])
@@ -218,6 +218,18 @@ class DbConnector():
             return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} INDEXES EMPTY'
         sql_list_ids = f'({ids[0]})' if len(ids) == 1 else f'{tuple(ids)}'
         sql_query = f'DELETE FROM records WHERE rowid IN {sql_list_ids};'
+        logging.debug(sql_query)
+        try:
+            self.cur.execute(sql_query)
+        except Exception as e:
+            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} :: {sql_query} :: {e}')
+            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} ERROR: {e}'
+        return self.cur.rowcount, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} FINISHED'
+
+    def clear_local_products(self):
+        if not self.cur:
+            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+        sql_query = f'DELETE FROM products;'
         logging.debug(sql_query)
         try:
             self.cur.execute(sql_query)
