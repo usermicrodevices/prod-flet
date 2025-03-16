@@ -133,9 +133,9 @@ async def main(page: ft.Page):
                     logging.debug('CONNECTION ERROR')
                     status_code = page.http_conn.auth()
                     break
-                else:
-                    cleared_count = page.db_conn.clear_records(rowids)
-                    logging.debug(['CLEARED LOCAL RECORDS', cleared_count])
+                elif rowids:
+                    cleared_count, msg = page.db_conn.clear_records(rowids)
+                    logging.debug(['CLEARED LOCAL RECORDS', cleared_count, msg])
 
     def background_sync_sales():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
