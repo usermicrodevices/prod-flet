@@ -213,8 +213,15 @@ class DbConnector():
 
     def clear_records(self, ids: list):
         if not self.cur:
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
-        sql_query = f'DELETE FROM records WHERE rowid IN {tuple(ids)};'
+            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+        if not ids:
+            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} INDEXES EMPTY'
+        sql_list_ids = f'({ids[0]})' if len(ids) == 1 else f'{tuple(ids)}'
+        sql_query = f'DELETE FROM records WHERE rowid IN {sql_list_ids};'
         logging.debug(sql_query)
-        self.cur.execute(sql_query)
+        try:
+            self.cur.execute(sql_query)
+        except Exception as e:
+            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} :: {sql_query} :: {e}')
+            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} ERROR: {e}'
         return self.cur.rowcount, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} FINISHED'
