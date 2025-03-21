@@ -118,7 +118,8 @@ async def main(page: ft.Page):
             logging.debug(msg)
         else:
             for doc_recs in recs:
-                data = {'sum_final':float(doc_recs[0]['sum_final']), 'registered_at':doc_recs[0]['registered_at'].strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':doc_recs[0]['doc_type']}
+                frec = doc_recs[0]
+                data = {'sum_final':float(frec['sum_final']), 'registered_at':frec['registered_at'].strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':frec['doc_type'], 'customer':frec['customer']}
                 records, rowids = [], []
                 for rec in doc_recs:
                     record = {'product':rec['product'], 'count':rec['count'], 'price':rec['price'], 'currency_id':rec['currency']['id']}

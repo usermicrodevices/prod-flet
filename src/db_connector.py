@@ -55,7 +55,8 @@ class DbConnector():
             #self.cur.execute('CREATE INDEX IF NOT EXISTS prods ON products (name COLLATE UNOCASE, article COLLATE UNOCASE, barcodes, qrcodes COLLATE UNOCASE);')
             #self.cur.execute('REINDEX prods;')
             self.cur.execute('CREATE TABLE IF NOT EXISTS products(id UNIQUE PRIMARY KEY, name VARCHAR , article VARCHAR, barcodes VARCHAR, qrcodes VARCHAR, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB);')
-            self.cur.execute('CREATE TABLE IF NOT EXISTS records(doc_type VARCHAR DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB);')
+            self.cur.execute('CREATE TABLE IF NOT EXISTS records(doc_type VARCHAR DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB, customer INTEGER);')
+            self.cur.execute('CREATE TABLE IF NOT EXISTS customers(id UNIQUE PRIMARY KEY, name VARCHAR, extinfo BLOB);')
 
     def __del__(self):
         if self.cur:
@@ -184,7 +185,7 @@ class DbConnector():
         else:
             logging.warning(data)
             try:
-                self.cur.executemany('INSERT INTO records VALUES(:doc_type, :registered_at, :product, :count, :cost, :price, :sum_final, :currency)', data)
+                self.cur.executemany('INSERT INTO records VALUES(:doc_type, :registered_at, :product, :count, :cost, :price, :sum_final, :currency, :customer)', data)
             except Exception as e:
                 return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
         return True, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'

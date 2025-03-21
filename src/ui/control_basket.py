@@ -23,6 +23,10 @@ class BasketControl(ft.ExpansionPanelList):
     def __init__(self, *args, **kwargs):
         self.page = kwargs.pop('page')
         #kwargs['on_change'] = self.handle_change_expansion_panel_item
+        if 'data' not in kwargs:
+            kwargs['data'] = {'customer': {'id':None, 'name':'', 'extinfo':{}}}
+        elif 'customer' not in kwargs['data']:
+            kwargs['data']['customer'] = {'id':None, 'name':'', 'extinfo':{}}
         super().__init__(*args, **kwargs)
 
     #def handle_change_expansion_panel_item(self, e: ft.ControlEvent):
@@ -115,7 +119,7 @@ class BasketControl(ft.ExpansionPanelList):
             alert('basket is empty', 'warning')
         else:
             dtz_now = datetime.now().astimezone()
-            data = {'sum_final':self.sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':data_type}
+            data = {'sum_final':self.sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':data_type, 'customer':self.data.get('customer', {}).get('id', None)}
             records = []
             for item in self.controls:
                 record = {'product':item.data['product']['id'], 'count':item.data['ctrl_count'].value, 'price':item.data['product']['price'], 'currency':item.data['product']['currency']}
@@ -133,6 +137,7 @@ class BasketControl(ft.ExpansionPanelList):
                     r['registered_at'] = dtz_now
                     r['doc_type'] = data['type']
                     r['cost'] = 0.0
+                    r['customer'] = data['customer']
                     local_records.append(r)
                 result, msg = self.page.db_conn.insert_records(local_records)
                 logging.debug(['SAVE SALE TO LOCAL DB FINISH', result, msg])
