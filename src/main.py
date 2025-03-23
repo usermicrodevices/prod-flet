@@ -28,10 +28,14 @@ async def main(page: ft.Page):
         alert_dlg.content = ft.Text(msg)
         page.open(alert_dlg)
 
-    page.status_ctrl = ft.Text()
-    def update_status_ctrl(val):
-        page.status_ctrl.value = val
-        page.status_ctrl.update()
+    page.status_ctrl = ft.Row([ft.Text(), ft.Text()])
+    def update_status_ctrl(statuses={}, redraw=True):
+        if statuses:
+            for k,v in statuses.items():
+                page.status_ctrl.controls[k].value = v
+            if redraw:
+                page.status_ctrl.update()
+    page.update_status_ctrl = update_status_ctrl
 
     page.scan_img = None
     def scan_barcode_close():
@@ -70,7 +74,7 @@ async def main(page: ft.Page):
             headers, prods = page.http_conn.get_products_cash()
             updated_products = db_update_products(prods)
             full_products, msg = page.db_conn.get_products_count()
-            update_status_ctrl(f'{full_products}/{updated_products}')
+            update_status_ctrl({0:f'{full_products}/{updated_products}'})
             page_max = int(headers.get('page_max', 0))
             logging.debug(['PAGE_MAX', page_max])
             if page_max > 1:
@@ -78,7 +82,7 @@ async def main(page: ft.Page):
                     headers, prods = page.http_conn.get_products_cash(p)
                     updated_products += db_update_products(prods)
                     full_products, msg = page.db_conn.get_products_count()
-                    update_status_ctrl(f'{full_products}/{updated_products}')
+                    update_status_ctrl({0:f'{full_products}/{updated_products}'})
         else:
             logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
             status_code = page.http_conn.auth()
@@ -177,10 +181,12 @@ async def main(page: ft.Page):
     )
 
     def basket_order_customer(evt: ft.ControlEvent):
-        page.basket.send_data('order_customer')
+        #page.basket.send_data('order_customer')
+        page.run_thread(page.basket.send_data, 'order_customer')
 
     def basket_sale(evt: ft.ControlEvent):
-        page.basket.send_data()
+        #page.basket.send_data()
+        page.run_thread(page.basket.send_data)
 
     def product_search(code: str):
         logging.info(['CODE', code])

@@ -32,8 +32,12 @@ class BasketControl(ft.ExpansionPanelList):
     #def handle_change_expansion_panel_item(self, e: ft.ControlEvent):
         #logging.debug(f'{e.data}; {e.control}')
 
+    def update_status_count(self, redraw_ctrl=True):
+        self.page.update_status_ctrl({1:f'{len(self.controls)}'}, redraw_ctrl)
+
     def clearing(self):
         self.controls = []
+        self.update_status_count(False)
         self.sum_final.value = '0.0'
         self.page.update()
         self.page.bar_search_products.focus()
@@ -62,13 +66,13 @@ class BasketControl(ft.ExpansionPanelList):
 
     def on_click_delete_item(self, e: ft.ControlEvent):
         self.controls.remove(e.control.data)
-        #self.page.update()
+        self.update_status_count()
         self.update()
 
     def add(self, product):
         item = self.search(product)
         if item:
-            item.data['ctrl_count_from_server'].value = product['count']
+            item.data['ctrl_count_from_server'].value = product.get('count', '-')
             item.data['ctrl_count'].value = f'{float(item.data['ctrl_count'].value) + 1}'
             sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
             item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
@@ -110,6 +114,7 @@ class BasketControl(ft.ExpansionPanelList):
                 subtitle=ft.Text(f"{product['name']} - {product['barcodes']}"),
                 trailing=ft.IconButton(ft.Icons.DELETE, on_click=self.on_click_delete_item, data=exp))
             self.controls.insert(0, exp)
+            self.update_status_count(False)
         self.sum_final_refresh()
         self.page.update()
         logging.debug(f'ADD_PRODUCT: {product}')
