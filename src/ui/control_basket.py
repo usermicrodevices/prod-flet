@@ -23,13 +23,21 @@ class BasketControl(ft.ExpansionPanelList):
     def __init__(self, *args, **kwargs):
         self.page = kwargs.pop('page')
         #kwargs['on_change'] = self.handle_change_expansion_panel_item
+        if 'data' not in kwargs:
+            kwargs['data'] = {'customer': {'id':None, 'name':'', 'extinfo':{}}}
+        elif 'customer' not in kwargs['data']:
+            kwargs['data']['customer'] = {'id':None, 'name':'', 'extinfo':{}}
         super().__init__(*args, **kwargs)
 
     #def handle_change_expansion_panel_item(self, e: ft.ControlEvent):
         #logging.debug(f'{e.data}; {e.control}')
 
+    def update_status_count(self, redraw_ctrl=True):
+        self.page.update_status_ctrl({1:f'{len(self.controls)}'}, redraw_ctrl)
+
     def clearing(self):
         self.controls = []
+        self.update_status_count(False)
         self.sum_final.value = '0.0'
         self.page.update()
         self.page.bar_search_products.focus()
@@ -58,13 +66,13 @@ class BasketControl(ft.ExpansionPanelList):
 
     def on_click_delete_item(self, e: ft.ControlEvent):
         self.controls.remove(e.control.data)
-        #self.page.update()
+        self.update_status_count()
         self.update()
 
     def add(self, product):
         item = self.search(product)
         if item:
-            item.data['ctrl_count_from_server'].value = product['count']
+            item.data['ctrl_count_from_server'].value = product.get('count', '-')
             item.data['ctrl_count'].value = f'{float(item.data['ctrl_count'].value) + 1}'
             sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
             item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
@@ -106,6 +114,7 @@ class BasketControl(ft.ExpansionPanelList):
                 subtitle=ft.Text(f"{product['name']} - {product['barcodes']}"),
                 trailing=ft.IconButton(ft.Icons.DELETE, on_click=self.on_click_delete_item, data=exp))
             self.controls.insert(0, exp)
+            self.update_status_count(False)
         self.sum_final_refresh()
         self.page.update()
         logging.debug(f'ADD_PRODUCT: {product}')
@@ -115,7 +124,7 @@ class BasketControl(ft.ExpansionPanelList):
             alert('basket is empty', 'warning')
         else:
             dtz_now = datetime.now().astimezone()
-            data = {'sum_final':self.sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':data_type}
+            data = {'sum_final':self.sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':data_type, 'customer':self.data.get('customer', {}).get('id', None)}
             records = []
             for item in self.controls:
                 record = {'product':item.data['product']['id'], 'count':item.data['ctrl_count'].value, 'price':item.data['product']['price'], 'currency':item.data['product']['currency']}
@@ -133,6 +142,7 @@ class BasketControl(ft.ExpansionPanelList):
                     r['registered_at'] = dtz_now
                     r['doc_type'] = data['type']
                     r['cost'] = 0.0
+                    r['customer'] = data['customer']
                     local_records.append(r)
                 result, msg = self.page.db_conn.insert_records(local_records)
                 logging.debug(['SAVE SALE TO LOCAL DB FINISH', result, msg])
