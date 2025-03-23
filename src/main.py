@@ -67,6 +67,7 @@ async def main(page: ft.Page):
         page.sync_products_running = True
         if page.http_conn.auth_succes:
             def db_update_products(prods):
+                count_updated = 0
                 if prods:
                     count_updated, msg = page.db_conn.update_products(data=prods)
                     logging.debug(['UPDATED_PRODUCTS', count_updated, msg])
