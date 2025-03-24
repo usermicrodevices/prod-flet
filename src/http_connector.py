@@ -40,7 +40,7 @@ class HttpConnector():
             await asyncio.sleep(1)
 
     def alert(self, msg: str, caption: str = 'error'):
-        self.page.open(flet.AlertDialog(modal=True, title=flet.Text(caption), content=flet.Text(msg), actions=[flet.TextButton('ok', on_click=lambda e: self.page.close(e.control.parent))]))
+        self.page.alert(msg, caption)
 
     def auth(self, show_alert=False):
         self.auth_succes = False

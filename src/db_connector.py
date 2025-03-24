@@ -1,4 +1,11 @@
-import datetime, logging, sqlite3, sys, threading
+table_formats = {
+'products':'(id UNIQUE PRIMARY KEY, name VARCHAR , article VARCHAR, barcodes VARCHAR, qrcodes VARCHAR, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB)',
+'records':'(doc_type VARCHAR DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB, customer INTEGER)',
+'customers':'(id UNIQUE PRIMARY KEY, name VARCHAR, extinfo BLOB)'
+}
+
+from log_tools import *
+import datetime, sqlite3, sys, threading
 
 def adapt_date_iso(val):
     return val.isoformat()
@@ -38,26 +45,17 @@ sqlite3.register_converter('list_args', lambda arg: eval(arg))
 sqlite3.register_adapter(dict, lambda kwargs: f'{kwargs}')
 sqlite3.register_converter('kwargs', lambda kwarg: eval(kwarg))
 
-
 class DbConnector():
 
     def __init__(self, *args, **kwargs):
         self.lock = threading.Lock()
         self.conn = sqlite3.connect(kwargs.get('file_name', 'prod.db'), autocommit=True, check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
-        #self.conn.create_collation('UNOCASE', self.nocase_collation)
-        #self.conn.text_factory = lambda data: str(data, encoding='utf8', errors='surrogateescape')
         self.conn.create_function('CASEFOLD', 1, lambda v: v.casefold(), deterministic=True)
         self.cur = self.conn.cursor()
         if not self.cur:
-            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID')
+            self.log(LE, ['CURSOR INVALID'])
         else:
-            #self.cur.execute('PRAGMA ENCODING=UTF16;')
-            #self.cur.execute('CREATE TABLE IF NOT EXISTS products(id UNIQUE PRIMARY KEY, name VARCHAR COLLATE UNOCASE, article VARCHAR COLLATE UNOCASE, barcodes VARCHAR, qrcodes VARCHAR COLLATE UNOCASE, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB);')
-            #self.cur.execute('CREATE INDEX IF NOT EXISTS prods ON products (name COLLATE UNOCASE, article COLLATE UNOCASE, barcodes, qrcodes COLLATE UNOCASE);')
-            #self.cur.execute('REINDEX prods;')
-            self.cur.execute('CREATE TABLE IF NOT EXISTS products(id UNIQUE PRIMARY KEY, name VARCHAR , article VARCHAR, barcodes VARCHAR, qrcodes VARCHAR, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB);')
-            self.cur.execute('CREATE TABLE IF NOT EXISTS records(doc_type VARCHAR DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB, customer INTEGER);')
-            self.cur.execute('CREATE TABLE IF NOT EXISTS customers(id UNIQUE PRIMARY KEY, name VARCHAR, extinfo BLOB);')
+            self.check_tables()
 
     def __del__(self):
         self.lock.acquire(True)
@@ -67,12 +65,93 @@ class DbConnector():
             self.conn.close()
         self.lock.release()
 
-    #def nocase_collation(self, a: str, b: str):
-        #if a.casefold() == b.casefold():
-            #return 0
-        #if a.casefold() < b.casefold():
-            #return -1
-        #return 1
+    def log(self, lvl=LN, msgs=[], *args, **kwargs):
+        s = f'{LICONS[lvl]}::{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        for m in msgs:
+            s += f'::{m}'
+            if hasattr(m, '__traceback__'):
+                s += f'🇱🇮🇳🇪{m.__traceback__.tb_lineno}'
+        logging.log(lvl, s, *args, **kwargs)
+
+    def drop_table(self, name):
+        sql_expr = f'DROP TABLE {name};'
+        try:
+            self.cur.execute(sql_expr)
+        except Exception as e:
+            self.log(LE, [sql_expr, e])
+        else:
+            self.log(LI, ['UNKNOWN-OR-OLD-TABLE', name, 'DELETED'])
+            return True
+        return False
+
+    def check_table_and_drop(self, name):
+        sql_expr = f'SELECT COUNT(*) FROM {name};'
+        try:
+            res = self.cur.execute(sql_expr)
+        except Exception as e:
+            self.log(LE, [sql_expr, e])
+        else:
+            count_records = res.fetchone()[0]
+            if count_records:
+                self.log(LI, ['IN-TABLE', name, 'COUNT-RECORDS', count_records, 'IMPOSSIBLE-TO-DELETE'])
+            else:
+                return self.drop_table(name)
+        return False
+
+    def check_tables(self):
+        exists_tables = []
+        sql_expr = 'SELECT name,sql FROM main.sqlite_master WHERE type="table";'
+        try:
+            res = self.cur.execute(sql_expr)
+        except Exception as e:
+            self.log(LE, [sql_expr, e])
+        else:
+            for k, v in res.fetchall():
+                if k not in exists_tables:
+                    exists_tables.append(k)
+                must_be_create = False
+                if k not in table_formats:
+                    self.log(LW, ['UNKNOWN-OR-OLD-TABLE', k, v])
+                    if self.check_table_and_drop(k):
+                        exists_tables.remove(k)
+                    continue
+                table_format = table_formats.get(k, '')
+                if not table_format:
+                    self.log(LW, ['INVALID-FORMAT-TABLE', k])
+                    continue
+                if table_format not in v:
+                    if k == 'records':
+                        if self.check_table_and_drop(k):
+                            if k in exists_tables:
+                                exists_tables.remove(k)
+                        else:
+                            new_name = f'{k}_{int(datetime.datetime.now().timestamp())}'
+                            sql_expr = f'ALTER TABLE {k} RENAME TO {new_name};'
+                            try:
+                                res = self.cur.execute(sql_expr)
+                            except Exception as e:
+                                self.log(LE, [sql_expr, e])
+                            else:
+                                self.log(LI, ['OLD-TABLE', k, 'RENAMED-TO', new_name])
+                                if k in exists_tables:
+                                    exists_tables.remove(k)
+                                if new_name not in exists_tables:
+                                    exists_tables.append(new_name)
+                    else:
+                        if self.drop_table(k):
+                            if k in exists_tables:
+                                exists_tables.remove(k)
+        for k, v in table_formats.items():
+            if k not in exists_tables:
+                sql_expr = f'CREATE TABLE IF NOT EXISTS {k}{v};'
+                try:
+                    self.cur.execute(sql_expr)
+                except Exception as e:
+                    self.log(LE, [sql_expr, e])
+                else:
+                    exists_tables.append(k)
+                    self.log(LI, ['NEW-TABLE', k, 'CREATED'])
+        self.log(LI, ['EXISTS-TABLES', exists_tables])
 
     def product_as_dict(self, v):
         return {'id':v[0],
@@ -95,44 +174,44 @@ class DbConnector():
         if not self.cur:
             return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         data = kwargs.get('data', [])
-        logging.debug(['👌RECEIVED PRODUCTS👌', len(data)])
+        self.log(LD, ['👌RECEIVED PRODUCTS👌', len(data)])
         if data:
             self.lock.acquire(True)
             try:
                 self.cur.executemany('INSERT OR REPLACE INTO products VALUES(:id, :name, :article, :barcodes, :qrcodes, :cost, :price, :currency, :unit, :grp);', data)
             except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
                 if 'UNIQUE constraint failed' not in f'{e}':
-                    logging.debug(['UPDATED PRODUCTS EXECUTEMANY INSERT', e])
+                    self.log(LD, ['UPDATED PRODUCTS EXECUTEMANY INSERT', e])
                 try:
                     self.cur.executemany('UPDATE products SET name=:name, article=:article, barcodes=:barcodes, qrcodes=:qrcodes, cost=:cost, price=:price, currency=:currency, unit=:unit, grp=:grp WHERE id=:id;', data)
                 except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
-                    logging.debug(['UPDATED PRODUCTS EXECUTEMANY UPDATE', e])
+                    self.log(LD, ['UPDATED PRODUCTS EXECUTEMANY UPDATE', e])
                     for v in data:
                         sql_query = f'''UPDATE products SET name='{v["name"]}', article='{v["article"]}', barcodes="{v['barcodes']}", qrcodes="{v['qrcodes']}", cost='{v["cost"]}', price='{v["price"]}', currency="{v['currency']}", unit="{v['unit']}", grp="{v['grp']}" WHERE id={v['id']};'''
                         try:
                             self.cur.execute(sql_query)
                         except Exception as e:
-                            logging.debug([e, sql_query])
+                            self.log(LE, [sql_query, e])
                         else:
                             updated += 1
-                    #logging.debug(['UPDATED PRODUCTS', updated])
+                    #self.log(LD, ['UPDATED PRODUCTS', updated])
                 except Exception as e:
                     self.lock.release()
                     return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
                 else:
-                    logging.debug('👌EXECUTEMANY UPDATE SUCCESS')
+                    self.log(LD, ['👌EXECUTEMANY UPDATE SUCCESS'])
                     updated = self.cur.rowcount
             except Exception as e:
                 self.lock.release()
                 return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}{e}'
             else:
-                logging.debug('👌EXECUTEMANY INSERT SUCCESS')
+                self.log(LD, ['👌EXECUTEMANY INSERT SUCCESS'])
                 updated = self.cur.rowcount
             #self.conn.commit()
             self.lock.release()
         #if updated:
             #self.cur.execute('REINDEX prods;')
-        logging.debug(['👌UPDATED PRODUCTS👌', updated])
+        self.log(LD, ['👌UPDATED PRODUCTS👌', updated])
         return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def get_product(self, *args, **kwargs):
@@ -149,7 +228,7 @@ class DbConnector():
         if s.isdigit():
             where_exp += f' OR id={s}'
         sql_search = f'SELECT * FROM products {where_exp} LIMIT 1;'
-        logging.debug(['✅☑GET_PRODUCT☑✅', sql_search])
+        self.log(LD, ['✅☑GET_PRODUCT☑✅', sql_search])
         self.lock.acquire(True)
         try:
             res = self.cur.execute(sql_search)
@@ -173,14 +252,14 @@ class DbConnector():
         if res:
             result = [self.product_as_dict(v) for v in res.fetchall()]
         self.lock.release()
-        logging.debug(result)
+        self.log(LD, [result])
         return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
     def get_products_count(self, *args, **kwargs):
         if not self.cur:
             return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         sql_count = 'SELECT COUNT(id) FROM products;'
-        logging.debug(['✅☑GET_PRODUCTS_COUNT☑✅', sql_count])
+        self.log(LD, ['✅☑GET_PRODUCTS_COUNT☑✅', sql_count])
         self.lock.acquire(True)
         try:
             res = self.cur.execute(sql_count)
@@ -200,7 +279,7 @@ class DbConnector():
         if not data:
             return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY DATA'
         else:
-            logging.warning(data)
+            #self.log(LI, [data])
             self.lock.acquire(True)
             try:
                 self.cur.executemany('INSERT INTO records VALUES(:doc_type, :registered_at, :product, :count, :cost, :price, :sum_final, :currency, :customer)', data)
@@ -221,16 +300,16 @@ class DbConnector():
         sqlite3.register_converter('timestamp', convert_timestamp)
         for reg in regs_list:
             if not reg:
-                logging.debug(['GET_GROUPED_RECORDS STRANGE registered_at', reg])
+                self.log(LD, ['GET_GROUPED_RECORDS STRANGE registered_at', reg])
             else:
                 sql_query = f'SELECT rowid,* FROM records WHERE registered_at={reg[0]};'
-                logging.debug(sql_query)
+                self.log(LD, [sql_query])
                 res = self.cur.execute(sql_query)
                 if res:
                     result.append([self.record_as_dict(v) for v in res.fetchall()])
         self.lock.release()
         if result and result[0]:
-            logging.debug(['GET_GROUPED_RECORDS', result])
+            self.log(LD, ['GET_GROUPED_RECORDS', result])
             return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
         return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY RECORDS'
 
@@ -241,14 +320,14 @@ class DbConnector():
             return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} INDEXES EMPTY'
         sql_list_ids = f'({ids[0]})' if len(ids) == 1 else f'{tuple(ids)}'
         sql_query = f'DELETE FROM records WHERE rowid IN {sql_list_ids};'
-        logging.debug(sql_query)
+        self.log(LD, [sql_query])
         count_records = 0
         self.lock.acquire(True)
         try:
             self.cur.execute(sql_query)
         except Exception as e:
             self.lock.release()
-            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} :: {sql_query} :: {e}')
+            self.log(LE, [sql_query, e])
             return count_records, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} ERROR: {e}'
         else:
             count_records = self.cur.rowcount
@@ -259,13 +338,13 @@ class DbConnector():
         if not self.cur:
             return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         sql_query = f'DELETE FROM products;'
-        logging.debug(sql_query)
+        self.log(LD, [sql_query])
         self.lock.acquire(True)
         try:
             self.cur.execute(sql_query)
         except Exception as e:
             self.lock.release()
-            logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} :: {sql_query} :: {e}')
+            self.log(LE, [sql_query, e])
             return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} ERROR: {e}'
         self.lock.release()
         return self.cur.rowcount, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} FINISHED'

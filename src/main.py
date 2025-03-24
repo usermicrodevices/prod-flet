@@ -3,9 +3,7 @@ import flet as ft
 from time import sleep
 from threading import current_thread
 
-import logging
-#logging.basicConfig(level=logging.DEBUG)
-
+from log_tools import *
 from camera import CameraMaster
 from http_connector import HttpConnector
 from db_connector import DbConnector
@@ -27,8 +25,9 @@ async def main(page: ft.Page):
         alert_dlg.title = ft.Text(caption)
         alert_dlg.content = ft.Text(msg)
         page.open(alert_dlg)
+    page.alert = alert
 
-    page.status_ctrl = ft.Row([ft.Text(), ft.Text()])
+    page.status_ctrl = ft.Row([ft.Text(size=45), ft.Text(size=45), ft.Text(size=30)])
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
             for k,v in statuses.items():
@@ -75,7 +74,7 @@ async def main(page: ft.Page):
             headers, prods = page.http_conn.get_products_cash()
             updated_products = db_update_products(prods)
             full_products, msg = page.db_conn.get_products_count()
-            update_status_ctrl({0:f'{full_products}/{updated_products}'})
+            update_status_ctrl({0:f'{full_products}🧷{updated_products}'})
             page_max = int(headers.get('page_max', 0))
             logging.debug(['PAGE_MAX', page_max])
             if page_max > 1:
@@ -83,7 +82,7 @@ async def main(page: ft.Page):
                     headers, prods = page.http_conn.get_products_cash(p)
                     updated_products += db_update_products(prods)
                     full_products, msg = page.db_conn.get_products_count()
-                    update_status_ctrl({0:f'{full_products}/{updated_products}'})
+                    update_status_ctrl({0:f'{full_products}🧷{updated_products}'})
         else:
             logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
             status_code = page.http_conn.auth()
@@ -93,6 +92,8 @@ async def main(page: ft.Page):
     def after_page_loaded(page):
         logging.debug('PAGE NOW IS LOADED')
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
+        full_products, msg = page.db_conn.get_products_count()
+        update_status_ctrl({0:f'{full_products}🧷0', 1:'🛒0', 2:'🚀'})
         page.http_conn = HttpConnector(page)
         status_code = page.http_conn.auth(show_alert=True)
         sync_products()
@@ -181,13 +182,13 @@ async def main(page: ft.Page):
         spacing = 0
     )
 
-    def basket_order_customer(evt: ft.ControlEvent):
-        #page.basket.send_data('order_customer')
-        page.run_thread(page.basket.send_data, 'order_customer')
+    def basket_order_customer(evt: ft.ControlEvent = None):
+        if len(page.basket.controls):
+            page.run_thread(page.basket.send_data, 'order_customer')
 
-    def basket_sale(evt: ft.ControlEvent):
-        #page.basket.send_data()
-        page.run_thread(page.basket.send_data)
+    def basket_sale(evt: ft.ControlEvent = None):
+        if len(page.basket.controls):
+            page.run_thread(page.basket.send_data)
 
     def product_search(code: str):
         logging.info(['CODE', code])
@@ -303,9 +304,14 @@ async def main(page: ft.Page):
 
     page.__keyboard_buffer__ = ''
     def on_keyboard(evt: ft.KeyboardEvent):
-        if alert_dlg.open:
-            page.close(alert_dlg)
-        #if evt.key in ['Enter', 'Numpad Enter'] and page.__keyboard_buffer__:
+        if evt.key == 'Escape':
+            if alert_dlg.open:
+                page.close(alert_dlg)
+        if evt.key == 'F12':
+            basket_sale()
+        if evt.key == 'F11':
+            basket_order_customer()
+        #elif evt.key in ['Enter', 'Numpad Enter'] and page.__keyboard_buffer__:
             #product_add(page.__keyboard_buffer__)
             #page.__keyboard_buffer__ = ''
         #else:
