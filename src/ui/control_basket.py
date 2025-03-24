@@ -33,7 +33,7 @@ class BasketControl(ft.ExpansionPanelList):
         #logging.debug(f'{e.data}; {e.control}')
 
     def update_status_count(self, redraw_ctrl=True):
-        self.page.update_status_ctrl({1:f'{len(self.controls)}'}, redraw_ctrl)
+        self.page.update_status_ctrl({1:f'🛒{len(self.controls)}'}, redraw_ctrl)
 
     def clearing(self):
         self.controls = []
@@ -146,4 +146,6 @@ class BasketControl(ft.ExpansionPanelList):
                     local_records.append(r)
                 result, msg = self.page.db_conn.insert_records(local_records)
                 logging.debug(['SAVE SALE TO LOCAL DB FINISH', result, msg])
+                if not result:
+                    logging.error(msg)
             self.clearing()
