@@ -167,7 +167,7 @@ class DbConnector():
         }
 
     def record_as_dict(self, v):
-        return {'rowid':v[0], 'doc_type':v[1], 'registered_at':v[2], 'product':v[3], 'count':v[4], 'cost':v[5], 'price':v[6], 'sum_final':v[7], 'currency':eval(v[8]) if v[8] else {}}
+        return {'rowid':v[0], 'doc_type':v[1], 'registered_at':v[2], 'product':v[3], 'count':v[4], 'cost':v[5], 'price':v[6], 'sum_final':v[7], 'currency':eval(v[8]) if v[8] else {}, 'customer':v[9]}
 
     def update_products(self, *args, **kwargs):
         updated = 0
