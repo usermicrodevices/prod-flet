@@ -71,9 +71,15 @@ class BasketControl(ft.ExpansionPanelList):
 
     def add(self, product):
         item = self.search(product)
+        new_counts = 1.0
+        if product.get('unit', {}).get('id', 0) in self.page.scales_unit_ids and self.page.scales and self.page.scales.data["weight"]:
+                new_counts = self.page.scales.data["weight"]
         if item:
             item.data['ctrl_count_from_server'].value = product.get('count', '-')
-            item.data['ctrl_count'].value = f'{float(item.data['ctrl_count'].value) + 1}'
+            if new_counts == 1.0:
+                item.data['ctrl_count'].value = f'{float(item.data['ctrl_count'].value) + new_counts}'
+            else:
+                item.data['ctrl_count'].value = f'{new_counts}'
             sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
             item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
         else:
@@ -82,8 +88,8 @@ class BasketControl(ft.ExpansionPanelList):
             str_price = f'{product['price']}'.strip('0').strip('.')
             ctrl_price = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREY_100, size=font_size)
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
-            ctrl_sum = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
-            ctrl_count = ft.TextField('1.0',
+            ctrl_sum = ft.Text(str_price if new_counts == 1.0 else f'{product['price']*new_counts}', text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
+            ctrl_count = ft.TextField(f'{new_counts}',
                 expand=3,
                 text_size=font_size,
                 content_padding=0,

@@ -4,6 +4,7 @@ from time import sleep
 from threading import current_thread
 
 from log_tools import *
+from hardware import mer328ac
 from camera import CameraMaster
 from http_connector import HttpConnector
 from db_connector import DbConnector
@@ -27,7 +28,7 @@ async def main(page: ft.Page):
         page.open(alert_dlg)
     page.alert = alert
 
-    page.status_ctrl = ft.Row([ft.Text(size=45), ft.Text(size=45), ft.Text(size=30)])
+    page.status_ctrl = ft.Row([ft.Text(size=45), ft.Text(size=45), ft.Text(size=45)])
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
             for k,v in statuses.items():
@@ -57,6 +58,8 @@ async def main(page: ft.Page):
     page.db_conn = None
     page.http_conn = None
     page.products = {}
+    page.scales = None
+    page.scales_unit_ids = []
 
     page.sync_products_running = False
     def sync_products():
@@ -93,10 +96,19 @@ async def main(page: ft.Page):
         logging.debug('PAGE NOW IS LOADED')
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
         full_products, msg = page.db_conn.get_products_count()
-        update_status_ctrl({0:f'{full_products}🧷0', 1:'🛒0', 2:'🚀'})
+        update_status_ctrl({0:f'{full_products}🧷0', 1:'🛒0', 2:'🗒'})
         page.http_conn = HttpConnector(page)
         status_code = page.http_conn.auth(show_alert=True)
         sync_products()
+        page.scales = mer328ac.pos2m(page.client_storage.get('scales_port') or '/dev/ttyUSB0', int(page.client_storage.get('scales_baud') or 9600), timeout=float(page.client_storage.get('scales_timeout') or 0.5), delay_requests=float(page.client_storage.get('scales_wait_read') or 0.5), weight_ratio=int(page.client_storage.get('scales_ratio') or 1000), start_infinity_read=True, exclusive=True)
+        if page.scales.device:
+            update_status_ctrl({2:'🖥⚖'})
+        scales_unit_ids = page.client_storage.get('scales_unit_ids')
+        if scales_unit_ids:
+            try:
+                page.scales_unit_ids = [int(uid) for uid in page.client_storage.get('scales_unit_ids').split(',')]
+            except Exception as e:
+                logging.error(e)
     page.run_thread(after_page_loaded, page)
 
     def background_sync_products():

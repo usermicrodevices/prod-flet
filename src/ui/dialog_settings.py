@@ -27,6 +27,12 @@ class SettingsDialog(ft.CupertinoAlertDialog):
         self.sync_products_interval = ft.TextField(hint_text='seconds', label='sync products interval', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('sync_products_interval') or '7200')
         self.sync_sales_interval = ft.TextField(hint_text='seconds', label='sync sales interval', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('sync_sales_interval') or '300')
         self.basket_font_size = ft.TextField(hint_text='basket font size', label='basket font size', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('basket_font_size') or '16')
+        self.scales_port = ft.TextField(hint_text='/dev/ttyS0', label='scales RS232', expand=True, value=page.client_storage.get('scales_port'))
+        self.scales_baud = ft.TextField(hint_text='9600', label='scales baud', expand=True, value=page.client_storage.get('scales_baud'))
+        self.scales_timeout = ft.TextField(hint_text='0.5', label='scales timeout', expand=True, value=page.client_storage.get('scales_timeout'))
+        self.scales_wait_read = ft.TextField(hint_text='1', label='scales wait', expand=True, value=page.client_storage.get('scales_wait_read'))
+        self.scales_ratio = ft.TextField(hint_text='1000', label='ratio', expand=True, value=page.client_storage.get('scales_ratio'))
+        self.scales_unit_ids = ft.TextField(hint_text='1,2,3', label='units', expand=True, value=page.client_storage.get('scales_unit_ids'))
         self.content = ft.Column(controls=[
             ft.Row([self.protocol, self.port]),
             ft.Row([self.host]),
@@ -34,7 +40,9 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             ft.Row([self.password]),
             ft.Row([self.db_file_name]),
             ft.Row([self.sync_products_interval, self.sync_sales_interval]),
-            ft.Row([self.basket_font_size])
+            ft.Row([self.basket_font_size]),
+            ft.Row([self.scales_port, self.scales_baud, self.scales_timeout]),
+            ft.Row([self.scales_wait_read, self.scales_ratio, self.scales_unit_ids])
             ]
         )
         self.actions = [
@@ -53,5 +61,11 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('sync_products_interval', self.sync_products_interval.value)
             self.page.client_storage.set('sync_sales_interval', self.sync_sales_interval.value)
             self.page.client_storage.set('basket_font_size', self.basket_font_size.value)
+            self.page.client_storage.set('scales_port', self.scales_port.value)
+            self.page.client_storage.set('scales_baud', self.scales_baud.value)
+            self.page.client_storage.set('scales_timeout', self.scales_timeout.value)
+            self.page.client_storage.set('scales_wait_read', self.scales_wait_read.value)
+            self.page.client_storage.set('scales_ratio', self.scales_ratio.value)
+            self.page.client_storage.set('scales_unit_ids', self.scales_unit_ids.value)
             self.page.sync_products()
         self.page.close(e.control.parent)

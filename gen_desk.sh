@@ -15,7 +15,7 @@ echo 'Terminal=false' >> $DESKTOP_FILE
 echo 'Type=Application' >> $DESKTOP_FILE
 echo 'Categories=Application;' >> $DESKTOP_FILE
 gio set $DESKTOP_FILE metadata::trusted true
-chmod a+x $DESKTOP_FILE
+chmod u+x $DESKTOP_FILE
 
 if [ ! -d $AUTOSTART_DIR ]; then
  mkdir $AUTOSTART_DIR
