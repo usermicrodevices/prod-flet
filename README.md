@@ -53,3 +53,29 @@ flet pack --icon kassa.png --name prod-flet src/main.py
 sudo apt install gnome-startup-applications
 ./gen_desk.sh
 ```
+
+
+# add linux user group "dialout" for read and write serial port
+first check serial group
+```
+ls -la /dev/ttyS0
+```
+or
+```
+ls -la /dev/ttyUSB0
+```
+view like ```crw-rw---- 1 root dialout 188, 0 мар 30 06:18 /dev/ttyUSB0```
+and next add group
+```
+sudo usermod -a -G dialout $USER
+```
+
+
+# if set "dialout" group not help, set linux permissions for read and write serial port for any user
+```
+sudo chmod a+rw /dev/ttyS0
+```
+or
+```
+sudo chmod a+rw /dev/ttyUSB0
+```
