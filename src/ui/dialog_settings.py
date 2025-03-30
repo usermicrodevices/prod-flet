@@ -41,8 +41,10 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             ft.Row([self.db_file_name]),
             ft.Row([self.sync_products_interval, self.sync_sales_interval]),
             ft.Row([self.basket_font_size]),
-            ft.Row([self.scales_port, self.scales_baud, self.scales_timeout]),
-            ft.Row([self.scales_wait_read, self.scales_ratio, self.scales_unit_ids])
+            ft.Row([self.scales_port]),
+            ft.Row([self.scales_baud, self.scales_timeout]),
+            ft.Row([self.scales_wait_read, self.scales_ratio]),
+            ft.Row([self.scales_unit_ids])
             ]
         )
         self.actions = [
@@ -67,5 +69,5 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('scales_wait_read', self.scales_wait_read.value)
             self.page.client_storage.set('scales_ratio', self.scales_ratio.value)
             self.page.client_storage.set('scales_unit_ids', self.scales_unit_ids.value)
-            self.page.sync_products()
+            self.page.run_thread(self.page.sync_products)
         self.page.close(e.control.parent)
