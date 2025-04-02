@@ -1,16 +1,16 @@
 [project]
 name = "prod"
-version = "0.2.0"
+version = "0.3.0"
 description = "prod client"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "flet>=0.27.0",
-  "opencv-python>=4.9.0",
+  "flet>=0.27.6",
+  "opencv-python>=4.10.0",
+  #"zxing_cpp>=2.3.0",
   "requests>=2.32.3",
   "pyserial>=3.5"
   #"pillow>=10.2.0",
-  #"zxing_cpp>=2.3.0"
   #"pyzbar>=0.1.9",
   #"libzbar0t64>=0.23"
 ]
@@ -35,4 +35,4 @@ path = "src"
 "android.permission.CAMERA" = true
 
 [tool.flet.android.feature]
-"android.hardware.camera" = false
+"android.hardware.camera" = true

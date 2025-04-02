@@ -5,7 +5,12 @@ ENQ = b'\x05'
 ACK = b'\x06'
 NAK = b'\x15'
 
-import logging, serial, sys, threading, time
+import logging, sys, threading, time
+try:
+    import serial
+except Exception as e:
+    logging.error(e)
+    serial = None
 
 
 class pos2m:
@@ -48,6 +53,8 @@ class pos2m:
                 logging.error(e)
 
     def open_device(self):
+        if serial is None:
+            return False
         try:
             self.device = serial.Serial(*self.serial_args, **self.serial_kwargs)
         except Exception as e:
