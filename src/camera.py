@@ -20,8 +20,8 @@ class CryptoHandlerMaster():
 class CameraMaster(ft.Image):
 
     def __init__(self, *args, **kwargs):
-        page = kwargs.pop('page')
-        logging.debug(['‼⚠ PAGE ⚠‼', page])
+        #page = kwargs.pop('page')
+        #logging.debug(['‼⚠ PAGE ⚠‼', page])
         self.qr_reader_callback = kwargs.pop('reader_callback')
         self.is_a_qr_reader = kwargs.pop('is_qr_reader', True)
 
@@ -46,7 +46,7 @@ class CameraMaster(ft.Image):
         self.update_thread = threading.Thread(target=self.update_image)
         self.update_thread.start()
 
-        self.page = page
+        #self.page = page
 
     def __del__(self):
         self.close()
@@ -109,7 +109,7 @@ class CameraMaster(ft.Image):
                     # Scan QR codes within the rectangle
                     frame, valid_objects = self.scan_qr_codes_within_rect(frame, top_left, bottom_right)
                     if valid_objects and self.qr_reader_callback:
-                        #valid_objects = zxingcpp.read_barcodes(frame)
+                        # valid_objects = zxingcpp.read_barcodes(frame)
                         # for obj in valid_objects:
                         #     if self.qr_reader_callback != None and obj['is_valid'] == True:
                         #         self.qr_reader_callback(obj['data'])
@@ -124,8 +124,9 @@ class CameraMaster(ft.Image):
                 #self.src_base64 = base64.b64encode(buf.getvalue()).decode()
                 #self._set_attr_internal('srcBase64', base64.b64encode(buf.getvalue()).decode())
 
-                _, buf = cv2.imencode('.png', frame)
+                unused, buf = cv2.imencode('.png', frame)
                 self.src_base64 = base64.b64encode(buf).decode('utf-8')
+                #self.src = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                 try:
                     self.update()
