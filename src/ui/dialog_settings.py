@@ -69,5 +69,6 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('scales_wait_read', self.scales_wait_read.value)
             self.page.client_storage.set('scales_ratio', self.scales_ratio.value)
             self.page.client_storage.set('scales_unit_ids', self.scales_unit_ids.value)
-            self.page.run_thread(self.page.sync_products)
+            if self.page.http_conn.auth(True) == 200:
+                self.page.run_thread(self.page.sync_products)
         self.page.close(e.control.parent)

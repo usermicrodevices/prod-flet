@@ -59,9 +59,18 @@ class BasketControl(ft.ExpansionPanelList):
 
     def on_change_product_count(self, evt: ft.ControlEvent):
         logging.debug(['CHANGE_BASKET_COUNT', evt.control.value, evt.data])
-        sum_product = float(evt.control.value) * float(evt.control.data['product']['price'])
-        evt.control.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
-        evt.control.data['ctrl_sum'].update()
+        c = evt.control
+        sum_product = round(float(c.value) * float(c.data['ctrl_sum'].value), 3)
+        c.data['ctrl_sum'].value = f'{sum_product}'
+        c.data['ctrl_sum'].update()
+        self.sum_final_refresh()
+
+    def on_change_product_price(self, evt: ft.ControlEvent):
+        logging.debug(['CHANGE_BASKET_PRICE', evt.control.value, evt.data])
+        c = evt.control
+        sum_product = round(float(c.value) * float(c.data['ctrl_count'].value), 3)
+        c.data['ctrl_sum'].value = f'{sum_product}'
+        c.data['ctrl_sum'].update()
         self.sum_final_refresh()
 
     def on_click_delete_item(self, e: ft.ControlEvent):
@@ -76,19 +85,39 @@ class BasketControl(ft.ExpansionPanelList):
                 new_counts = self.page.scales.data["weight"]
         if item:
             item.data['ctrl_count_from_server'].value = product.get('count', '-')
+            count_old = float(item.data['ctrl_count'].value) if item.data['ctrl_count'].value else 0.0
             if new_counts == 1.0:
-                item.data['ctrl_count'].value = f'{float(item.data['ctrl_count'].value) + new_counts}'
+                item.data['ctrl_count'].value = f'{count_old + new_counts}'
             else:
                 item.data['ctrl_count'].value = f'{new_counts}'
-            sum_product = float(item.data['ctrl_count'].value) * float(item.data['product']['price'])
-            item.data['ctrl_sum'].value = f'{round(sum_product, 3)}'
+            count = float(item.data['ctrl_count'].value) if item.data['ctrl_count'].value else 0.0
+            price = float(item.data['ctrl_price'].value) if item.data['ctrl_price'].value else 0.0
+            sum_product = round(count * price, 3)
+            item.data['ctrl_sum'].value = f'{sum_product}'
         else:
             font_size = int(self.page.client_storage.get('basket_font_size'))
             ctrl_count_from_server = ft.Text(product.get('count', '-'), text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
             str_price = f'{product['price']}'.strip('0').strip('.')
-            ctrl_price = ft.Text(str_price, text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREY_100, size=font_size)
+            if not str_price:
+                str_price = '0.0'
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
-            ctrl_sum = ft.Text(str_price if new_counts == 1.0 else f'{product['price']*new_counts}', text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
+            sum_product = round(product['price']*new_counts, 3)
+            ctrl_sum = ft.Text(str_price if new_counts == 1.0 else f'{sum_product}', text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
+            if self.page.is_superuser():
+                ctrl_price = ft.TextField(str_price,
+                    content_padding=0,
+                    text_size=font_size,
+                    input_filter=FloatNumbersOnlyInputFilter(),
+                    keyboard_type=ft.KeyboardType.NUMBER,
+                    text_align=ft.TextAlign.RIGHT,
+                    on_change=self.on_change_product_price,
+                    data = {'ctrl_sum':ctrl_sum})
+            else:
+                ctrl_price = ft.Text(str_price,
+                    text_align=ft.TextAlign.RIGHT,
+                    bgcolor=ft.Colors.GREY_100,
+                    size=font_size,
+                    data = {'ctrl_sum':ctrl_sum})
             ctrl_count = ft.TextField(f'{new_counts}',
                 expand=3,
                 text_size=font_size,
@@ -98,7 +127,8 @@ class BasketControl(ft.ExpansionPanelList):
                 keyboard_type=ft.KeyboardType.NUMBER,
                 text_align=ft.TextAlign.RIGHT,
                 on_change=self.on_change_product_count,
-                data = {'product':product, 'ctrl_sum':ctrl_sum})
+                data = {'ctrl_price':ctrl_price, 'ctrl_sum':ctrl_sum})
+            ctrl_price.data['ctrl_count'] = ctrl_count
             ctrl_product = ft.Text(f"{product['name']}", size=font_size)
             ctrl_unit = ft.Text(product['unit']['label'], size=font_size-2)
             subtitle_controls = [
@@ -115,7 +145,7 @@ class BasketControl(ft.ExpansionPanelList):
                     title = ft.Row([ctrl_product], spacing=0),
                     subtitle = ft.Row(subtitle_controls, spacing=0)
                     ), margin=0, padding=0),
-                data = {'product':product, 'ctrl_count_from_server':ctrl_count_from_server, 'ctrl_count':ctrl_count, 'ctrl_sum':ctrl_sum})
+                data = {'product':product, 'ctrl_count_from_server':ctrl_count_from_server, 'ctrl_count':ctrl_count, 'ctrl_price':ctrl_price, 'ctrl_sum':ctrl_sum})
             exp.content = ft.ListTile(title=ft.Text(product['article']),
                 subtitle=ft.Text(f"{product['name']} - {product['barcodes']}"),
                 trailing=ft.IconButton(ft.Icons.DELETE, on_click=self.on_click_delete_item, data=exp))

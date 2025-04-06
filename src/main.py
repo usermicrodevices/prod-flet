@@ -1,7 +1,9 @@
-import asyncio, inspect
-import flet as ft
+import asyncio, inspect, os
 from time import sleep
 from threading import current_thread
+
+import flet as ft
+import flet_permission_handler as fph
 
 from log_tools import *
 from hardware import mer328ac
@@ -21,6 +23,9 @@ async def main(page: ft.Page):
     page.window.maximized = True
     page.theme_mode = ft.ThemeMode.LIGHT
 
+    ph = fph.PermissionHandler()
+    page.overlay.append(ph)
+
     alert_dlg = ft.AlertDialog(modal=True, actions=[ft.TextButton('ok', on_click=lambda e: page.close(e.control.parent))])
     def alert(msg: str, caption: str = 'error'):
         alert_dlg.title = ft.Text(caption)
@@ -28,7 +33,14 @@ async def main(page: ft.Page):
         page.open(alert_dlg)
     page.alert = alert
 
-    page.status_ctrl = ft.Row([ft.Text(size=45), ft.Text(size=45), ft.Text(size=45)])
+    size_status_text = 45
+    if ft.utils.platform_utils.is_mobile():
+        size_status_text = 14
+    page.status_ctrl = ft.Row([ft.Text(size=size_status_text),
+                               ft.Text(size=size_status_text, value='🛒0'),
+                               ft.Text(size=size_status_text, value='🗒'),
+                               ft.Text(size=size_status_text, value='📴')])
+
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
             for k,v in statuses.items():
@@ -36,6 +48,10 @@ async def main(page: ft.Page):
             if redraw:
                 page.status_ctrl.update()
     page.update_status_ctrl = update_status_ctrl
+
+    def is_superuser():
+        return page.client_storage.get('user').get('is_superuser', False)
+    page.is_superuser = is_superuser
 
     page.scan_img = None
     def scan_barcode_close():
@@ -45,13 +61,21 @@ async def main(page: ft.Page):
         if page.scan_img:
             page.scan_img.close()
             page.scan_img = None
+            update_status_ctrl({3:'📴'})
     page.scan_barcode_close = scan_barcode_close
 
     def scan_barcode(evt: ft.ControlEvent):
+        if ft.utils.platform_utils.is_mobile():
+            if not ph.check_permission(fph.PermissionType.CAMERA, 5):
+                ph.request_permission(fph.PermissionType.CAMERA)
         if not page.scan_img:
-            page.scan_img = CameraMaster(page=page, reader_callback=product_add, width=320, height=240, expand=True)
-            content_panel.controls.insert(0, page.scan_img)
-            content_panel.update()
+            page.scan_img = CameraMaster(reader_callback=product_add, width=320, height=240, expand=True)
+            if not page.scan_img.cap:
+                update_status_ctrl({3:'📴'})#📽
+            else:
+                update_status_ctrl({3:'🎦'})#📷📹
+                content_panel.controls.insert(0, page.scan_img)
+                content_panel.update()
         else:
             page.scan_barcode_close()
 
@@ -96,7 +120,7 @@ async def main(page: ft.Page):
         logging.debug('PAGE NOW IS LOADED. NEXT CHECK LOCAL DATABASE CONNECTION...')
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
         full_products, msg = page.db_conn.get_products_count()
-        update_status_ctrl({0:f'{full_products}🧷0', 1:'🛒0', 2:'🗒'})
+        update_status_ctrl({0:f'{full_products}🧷0'})#, 1:'🛒0', 2:'🗒'
         logging.debug('CHECK ACCESSIBLE RETAIL HARDWARE...')
         page.scales = mer328ac.pos2m(page.client_storage.get('scales_port') or '/dev/ttyUSB0', int(page.client_storage.get('scales_baud') or 9600), timeout=float(page.client_storage.get('scales_timeout') or 0.5), delay_requests=float(page.client_storage.get('scales_wait_read') or 0.5), weight_ratio=int(page.client_storage.get('scales_ratio') or 1000), start_infinity_read=True, exclusive=True)
         if page.scales.device:
@@ -266,6 +290,7 @@ async def main(page: ft.Page):
             page.db_conn.clear_local_products()
             sync_products()
         elif evt.control.selected_index == 3:
+            page.client_storage.set('user', {})
             if page.platform == 'android':
                 import os
                 os._exit(0)

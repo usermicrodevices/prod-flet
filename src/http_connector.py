@@ -1,5 +1,4 @@
 import asyncio, flet, json, logging, requests, sys
-#import requests_async as requests
 
 from html.parser import HTMLParser
 
@@ -44,6 +43,7 @@ class HttpConnector():
 
     def auth(self, show_alert=False):
         self.auth_succes = False
+        self.page.client_storage.set('user', {})
         logging.debug(['🍪GET🍪', self.url_admin])
         try:
             response = self.session.get(self.url_admin)
@@ -70,6 +70,15 @@ class HttpConnector():
                 if response.status_code == 200:
                     self.auth_succes = True
                     self.session.headers['X-CSRFToken'] = self.session.cookies.get('csrftoken', parser.csrfmiddlewaretoken)
+                    user_data = {}
+                    try:#data = response.json()
+                        data = json.loads(response.content.decode('utf-8').replace('"True"', 'true').replace('"False"', 'false').replace('"None"', 'null'))
+                    except Exception as e:
+                        logging.error(f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}')
+                    else:
+                        user_data = data.get('user', {})
+                        self.page.client_storage.set('user', user_data)
+                    logging.debug(['🍰RESPONSE.CONTENT🍰', user_data])
                     return 200
         else:
             if show_alert:

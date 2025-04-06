@@ -1,11 +1,13 @@
 [project]
 name = "prod"
-version = "0.3.0"
+version = "1.0.0"
 description = "prod client"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "flet>=0.27.6",
+  #"flet-permission-handler>=0.0.1",
+  "flet-permission-handler @ git+https://github.com/flet-dev/flet-permission-handler.git",
   "opencv-python>=4.10.0",
   #"zxing_cpp>=2.3.0",
   "requests>=2.32.3",
