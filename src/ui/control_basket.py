@@ -48,7 +48,7 @@ class BasketControl(ft.ExpansionPanelList):
         for item in self.controls:
             if item.data['ctrl_sum'].value:
                 sum_final += float(item.data['ctrl_sum'].value)
-        self.sum_final.value = sum_final
+        self.sum_final.value = round(sum_final, 2)
         self.sum_final.update()
 
     def search(self, product):
@@ -60,7 +60,7 @@ class BasketControl(ft.ExpansionPanelList):
     def on_change_product_count(self, evt: ft.ControlEvent):
         logging.debug(['CHANGE_BASKET_COUNT', evt.control.value, evt.data])
         c = evt.control
-        sum_product = round(float(c.value) * float(c.data['ctrl_sum'].value), 3)
+        sum_product = round(float(c.value) * float(c.data['ctrl_sum'].value), 2)
         c.data['ctrl_sum'].value = f'{sum_product}'
         c.data['ctrl_sum'].update()
         self.sum_final_refresh()
@@ -68,7 +68,7 @@ class BasketControl(ft.ExpansionPanelList):
     def on_change_product_price(self, evt: ft.ControlEvent):
         logging.debug(['CHANGE_BASKET_PRICE', evt.control.value, evt.data])
         c = evt.control
-        sum_product = round(float(c.value) * float(c.data['ctrl_count'].value), 3)
+        sum_product = round(float(c.value) * float(c.data['ctrl_count'].value), 2)
         c.data['ctrl_sum'].value = f'{sum_product}'
         c.data['ctrl_sum'].update()
         self.sum_final_refresh()
@@ -92,16 +92,16 @@ class BasketControl(ft.ExpansionPanelList):
                 item.data['ctrl_count'].value = f'{new_counts}'
             count = float(item.data['ctrl_count'].value) if item.data['ctrl_count'].value else 0.0
             price = float(item.data['ctrl_price'].value) if item.data['ctrl_price'].value else 0.0
-            sum_product = round(count * price, 3)
+            sum_product = round(count * price, 2)
             item.data['ctrl_sum'].value = f'{sum_product}'
         else:
             font_size = int(self.page.client_storage.get('basket_font_size'))
             ctrl_count_from_server = ft.Text(product.get('count', '-'), text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
-            str_price = f'{product['price']}'.strip('0').strip('.')
+            str_price = f'{product['price']:.2f}'#.strip('0').strip('.')
             if not str_price:
                 str_price = '0.0'
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
-            sum_product = round(product['price']*new_counts, 3)
+            sum_product = round(product['price']*new_counts, 2)
             ctrl_sum = ft.Text(str_price if new_counts == 1.0 else f'{sum_product}', text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
             if self.page.is_superuser():
                 ctrl_price = ft.TextField(str_price,
