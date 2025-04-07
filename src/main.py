@@ -39,7 +39,8 @@ async def main(page: ft.Page):
     page.status_ctrl = ft.Row([ft.Text(size=size_status_text),
                                ft.Text(size=size_status_text, value='🛒0'),
                                ft.Text(size=size_status_text, value='🗒'),
-                               ft.Text(size=size_status_text, value='📴')])
+                               ft.Text(size=size_status_text, value='📴'),
+                               ft.Text(size=size_status_text, value='💬')])
 
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
@@ -201,6 +202,12 @@ async def main(page: ft.Page):
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
     page.run_thread(background_sync_sales)
 
+    def open_autocomplete(evt):
+        page.bar_search_products.open_view()
+
+    def close_autocomplete(evt):
+        page.bar_search_products.close_view()
+
     def on_search(evt: ft.ControlEvent):
         if evt.control.value:
             product_add(evt.control.value)
@@ -208,10 +215,41 @@ async def main(page: ft.Page):
             evt.control.update()
             evt.control.focus()
 
-    page.bar_search_products = ft.SearchBar(bar_hint_text="Search products...",
-        #on_tap=on_search,
+    search_lv = ft.ListView()
+
+    def search_close_autocompletes(value: str = '', only_clear: bool = False):
+        if search_lv.controls:
+            search_lv.controls = []
+            if not only_clear:
+                page.bar_search_products.close_view()
+            if value:
+                page.bar_search_products.value = value
+            update_status_ctrl({4:'💬'})
+            page.bar_search_products.update()
+
+    def on_search_change(evt):
+        if len(evt.data) < (page.client_storage.get('search_auto_min_count') or 2):
+            search_close_autocompletes(evt.data)
+        else:
+            products, msg = page.db_conn.search_products(evt.data, limit_expression=f' LIMIT {page.client_storage.get('search_auto_limit') or 1000}')
+            if products:
+                update_status_ctrl({4:f'💬{len(products)}'})
+                search_lv.controls = [ft.ListTile(title=ft.Text(product['name']), on_click=lambda evt: basket_add_product(evt.control.data), data=product) for product in products]
+                page.bar_search_products.open_view()
+                page.bar_search_products.update()
+            else:
+                search_close_autocompletes(evt.data, True)
+
+    page.bar_search_products = ft.SearchBar(bar_hint_text='Search products...',
+        tooltip = 'Search products in local base',
         on_submit=on_search,
-        expand=3, autofocus=True)
+        on_tap=open_autocomplete,
+        on_tap_outside_bar = close_autocomplete,
+        expand=3,
+        autofocus=True,
+        controls=[search_lv],
+        on_change=on_search_change
+    )
 
     page.basket = BasketControl(page=page,
         expand_icon_color = ft.Colors.GREEN,
@@ -228,19 +266,26 @@ async def main(page: ft.Page):
         if len(page.basket.controls):
             page.run_thread(page.basket.send_data)
 
+    def basket_add_product(product: dict):
+        headers, prod = page.http_conn.get_product(product['id'])
+        product['count'] = '-' if not prod else prod['count']
+        page.basket.add(product)
+        search_close_autocompletes()
+
     def product_search(code: str):
         logging.info(['CODE', code])
-        prod, msg = page.db_conn.get_product(code)
-        logging.info(['FOUND', prod, msg])
-        return prod
+        prods, msg = page.db_conn.search_products(code)
+        logging.info(['FOUND', prods, msg])
+        return prods
 
     def product_add(code: str):
         page.add(ft.CupertinoActivityIndicator(radius=50, color=ft.Colors.RED, animating=True))
-        product = product_search(code)
-        if product:
-            headers, prod = page.http_conn.get_product(product['id'])
-            product['count'] = '-' if not prod else prod['count']
-            page.basket.add(product)
+        products = product_search(code)
+        if len(products) == 1:
+            basket_add_product(products[0])
+        elif products:
+            logging.debug(f'{code} FOUND MANY')
+            alert(code, 'FOUND MANY, PLEASE SELECT ONE')
         else:
             logging.debug(f'{code} NOT FOUND')
             alert(code, 'NOT FOUND')
@@ -271,7 +316,7 @@ async def main(page: ft.Page):
 
     bottomappbar = ft.BottomAppBar(bottomappbar_content, bgcolor=ft.Colors.GREEN, shape=ft.NotchShape.CIRCULAR)
 
-    content_panel = ft.core.list_view.ListView(controls=[page.basket])
+    content_panel = ft.ListView(controls=[page.basket])
 
     logging.debug(f'w={page.window.width:.2f}; h={page.window.height:.2f}; {page.client_ip}; {page.client_user_agent}; {page.pwa}')
 
@@ -300,7 +345,7 @@ async def main(page: ft.Page):
         pagelet.end_drawer.update()
 
     topbar = ft.CupertinoAppBar(
-        #title=ft.SearchBar(bar_hint_text="Search products...", on_tap=on_search, on_submit=on_search, expand=True, autofocus=True),
+        #title=ft.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
         #leading=ft.Icon(ft.icons.WB_SUNNY),
         #trailing=ft.Icon(ft.icons.WB_SUNNY_OUTLINED),
         middle=ft.Row([
@@ -350,6 +395,15 @@ async def main(page: ft.Page):
             basket_sale()
         if evt.key == 'F11':
             basket_order_customer()
+        if evt.key == 'F5':
+            if page.bar_search_products.on_change:
+                page.bar_search_products.on_change = None
+                search_close_autocompletes()
+                update_status_ctrl({4:'🎮'})
+            else:
+                page.bar_search_products.on_change = on_search_change
+                page.bar_search_products.update()
+                update_status_ctrl({4:'💬'})
         #elif evt.key in ['Enter', 'Numpad Enter'] and page.__keyboard_buffer__:
             #product_add(page.__keyboard_buffer__)
             #page.__keyboard_buffer__ = ''
