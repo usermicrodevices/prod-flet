@@ -17,7 +17,6 @@ class BasketControl(ft.ExpansionPanelList):
         input_filter=FloatNumbersOnlyInputFilter(),
         keyboard_type=ft.KeyboardType.NUMBER,
         text_align=ft.TextAlign.RIGHT,
-        #on_change=change_basket_sum_final,
     )
 
     def __init__(self, *args, **kwargs):
@@ -60,7 +59,7 @@ class BasketControl(ft.ExpansionPanelList):
     def on_change_product_count(self, evt: ft.ControlEvent):
         logging.debug(['CHANGE_BASKET_COUNT', evt.control.value, evt.data])
         c = evt.control
-        sum_product = round(float(c.value) * float(c.data['ctrl_sum'].value), 2)
+        sum_product = round(float(c.value) * float(c.data['ctrl_price'].value), 2)
         c.data['ctrl_sum'].value = f'{sum_product}'
         c.data['ctrl_sum'].update()
         self.sum_final_refresh()

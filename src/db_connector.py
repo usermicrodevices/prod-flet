@@ -194,7 +194,6 @@ class DbConnector():
                             self.log(LE, [sql_query, e])
                         else:
                             updated += 1
-                    #self.log(LD, ['UPDATED PRODUCTS', updated])
                 except Exception as e:
                     self.lock.release()
                     return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
@@ -207,38 +206,32 @@ class DbConnector():
             else:
                 self.log(LD, ['👌EXECUTEMANY INSERT SUCCESS'])
                 updated = self.cur.rowcount
-            #self.conn.commit()
             self.lock.release()
-        #if updated:
-            #self.cur.execute('REINDEX prods;')
         self.log(LD, ['👌UPDATED PRODUCTS👌', updated])
         return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 
-    def get_product(self, *args, **kwargs):
+    def search_products(self, *args, **kwargs):
+        result = []
         if not self.cur:
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         if not len(args):
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING'
-        result = None
+            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING'
         s = args[0]
         if not isinstance(s, (int, float)) and not s:
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING [{s}]'
-        #where_exp = f'''WHERE name LIKE ('%{s}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
+            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING [{s}]'
         where_exp = f'''WHERE CASEFOLD(name) LIKE ('%{f"{s}".casefold()}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
         if s.isdigit():
             where_exp += f' OR id={s}'
-        sql_search = f'SELECT * FROM products {where_exp} LIMIT 1;'
-        self.log(LD, ['✅☑GET_PRODUCT☑✅', sql_search])
+        sql_search = f'SELECT * FROM products {where_exp}{kwargs.get("limit_expression", "")};'
+        self.log(LD, ['✅☑SEARCH_PRODUCTS☑✅', sql_search])
         self.lock.acquire(True)
         try:
             res = self.cur.execute(sql_search)
         except Exception as e:
             self.lock.release()
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {sql_search} {e}'
+            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {sql_search} {e}'
         else:
-            v = res.fetchone()
-            if v:
-                result = self.product_as_dict(v)
+            result = [self.product_as_dict(v) for v in res.fetchall()]
         self.lock.release()
         return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
 

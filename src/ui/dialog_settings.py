@@ -17,7 +17,7 @@ class SettingsDialog(ft.CupertinoAlertDialog):
     def __init__(self, *args, **kwargs):
         page = kwargs.pop('page')
         super().__init__(*args, **kwargs)
-        #self.title = ft.TextField('SettingsDialog')
+        #self.title = ft.TextField('Settings Dialog')
         self.protocol = ft.TextField(hint_text='protocol', label='protocol', expand=True, value=page.client_storage.get('protocol'))
         self.host = ft.TextField(hint_text='host', label='host', expand=True, value=page.client_storage.get('host'))
         self.port = ft.TextField(hint_text='port', label='port', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('port'))
@@ -33,6 +33,8 @@ class SettingsDialog(ft.CupertinoAlertDialog):
         self.scales_wait_read = ft.TextField(hint_text='1', label='scales wait', expand=True, value=page.client_storage.get('scales_wait_read'))
         self.scales_ratio = ft.TextField(hint_text='1000', label='ratio', expand=True, value=page.client_storage.get('scales_ratio'))
         self.scales_unit_ids = ft.TextField(hint_text='1,2,3', label='units', expand=True, value=page.client_storage.get('scales_unit_ids'))
+        self.search_auto_min_count = ft.TextField(hint_text='2', label='🔍 min', expand=True, value=page.client_storage.get('search_auto_min_count'))
+        self.search_auto_limit = ft.TextField(hint_text='1000', label='🔍 limit', expand=True, value=page.client_storage.get('search_auto_limit'))
         self.content = ft.Column(controls=[
             ft.Row([self.protocol, self.port]),
             ft.Row([self.host]),
@@ -44,7 +46,8 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             ft.Row([self.scales_port]),
             ft.Row([self.scales_baud, self.scales_timeout]),
             ft.Row([self.scales_wait_read, self.scales_ratio]),
-            ft.Row([self.scales_unit_ids])
+            ft.Row([self.scales_unit_ids]),
+            ft.Row([self.search_auto_min_count, self.search_auto_limit])
             ]
         )
         self.actions = [
@@ -69,6 +72,8 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('scales_wait_read', self.scales_wait_read.value)
             self.page.client_storage.set('scales_ratio', self.scales_ratio.value)
             self.page.client_storage.set('scales_unit_ids', self.scales_unit_ids.value)
+            self.page.client_storage.set('search_auto_min_count', self.search_auto_min_count.value)
+            self.page.client_storage.set('search_auto_limit', self.search_auto_limit.value)
             if self.page.http_conn.auth(True) == 200:
                 self.page.run_thread(self.page.sync_products)
         self.page.close(e.control.parent)
