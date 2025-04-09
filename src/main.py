@@ -111,6 +111,8 @@ async def main(page: ft.Page):
                     updated_products += db_update_products(prods)
                     full_products, msg = page.db_conn.get_products_count()
                     update_status_ctrl({0:f'{full_products}🧷{updated_products}'})
+            if updated_products:
+                page.db_conn.update_cache()
         else:
             logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
             status_code = page.http_conn.auth()

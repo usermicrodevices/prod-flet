@@ -56,6 +56,15 @@ class DbConnector():
             self.log(LE, ['CURSOR INVALID'])
         else:
             self.check_tables()
+        # CACHE
+        self.cachepath = kwargs.get('cache_path', 'file::memory:?cache=shared')
+        self.cache = sqlite3.connect(self.cachepath, check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES)
+        self.cache.create_function('CASEFOLD', 1, lambda v: v.casefold(), deterministic=True)
+        self.cur_cache = self.cache.cursor()
+        if not self.cur_cache:
+            self.log(LE, ['CACHE CURSOR INVALID'])
+        else:
+            self.update_cache()
 
     def __del__(self):
         self.lock.acquire(True)
@@ -153,6 +162,48 @@ class DbConnector():
                     self.log(LI, ['NEW-TABLE', k, 'CREATED'])
         self.log(LI, ['EXISTS-TABLES', exists_tables])
 
+    def update_cache(self, cache_path: str = ''):
+        if not cache_path:
+            cache_path = self.cachepath
+        self.lock.acquire(True)
+        sql_expr = f"ATTACH DATABASE '{cache_path}' AS cache;"
+        try:
+            self.cur.execute(sql_expr)
+        except Exception as e:
+            self.log(LE, [sql_expr, e])
+        else:
+            self.log(LI, ['SUCCESS', sql_expr])
+            tname = 'products'
+            sql_expr = f'DROP TABLE IF EXISTS {tname};'
+            try:
+                self.cur_cache.execute(sql_expr)
+            except Exception as e:
+                self.log(LE, [sql_expr, e])
+            else:
+                self.log(LI, ['CACHE-TABLE', tname, 'DROPED'])
+                sql_expr = f'CREATE TABLE {tname}{table_formats[tname]};'
+                try:
+                    self.cur_cache.execute(sql_expr)
+                except Exception as e:
+                    self.log(LE, [sql_expr, e])
+                else:
+                    self.log(LI, ['CACHE-TABLE', tname, 'CREATED'])
+                    sql_expr = f'INSERT INTO cache.{tname} SELECT * FROM main.{tname};'
+                    try:
+                        self.cur.execute(sql_expr)
+                    except Exception as e:
+                        self.log(LE, [sql_expr, e])
+                    else:
+                        self.log(LI, ['SUCCESS', sql_expr])
+            sql_expr = 'DETACH cache;'
+            try:
+                self.cur.execute(sql_expr)
+            except Exception as e:
+                self.log(LE, [sql_expr, e])
+            else:
+                self.log(LI, ['SUCCESS', sql_expr])
+        self.lock.release()
+
     def product_as_dict(self, v):
         return {'id':v[0],
             'name':v[1],
@@ -212,7 +263,7 @@ class DbConnector():
 
     def search_products(self, *args, **kwargs):
         result = []
-        if not self.cur:
+        if not self.cur_cache:
             return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
         if not len(args):
             return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING'
@@ -226,7 +277,7 @@ class DbConnector():
         self.log(LD, ['✅☑SEARCH_PRODUCTS☑✅', sql_search])
         self.lock.acquire(True)
         try:
-            res = self.cur.execute(sql_search)
+            res = self.cur_cache.execute(sql_search)
         except Exception as e:
             self.lock.release()
             return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {sql_search} {e}'
