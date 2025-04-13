@@ -12,6 +12,7 @@ from http_connector import HttpConnector
 from db_connector import DbConnector
 from ui.dialog_settings import SettingsDialog
 from ui.dialog_products import ProductsDialog
+from ui.dialog_documents import DocumentsDialog
 from ui.control_basket import BasketControl
 
 
@@ -302,6 +303,9 @@ async def main(page: ft.Page):
     def open_poducts(evt: ft.ControlEvent):
         page.open(ProductsDialog(page=page))
 
+    def open_documents(evt: ft.ControlEvent):
+        page.open(DocumentsDialog(page=page))
+
     bottomappbar_content = ft.Row(
         controls=[
             ft.IconButton(icon=ft.Icons.MENU, icon_color=ft.Colors.WHITE, on_click=on_click_pagelet),
@@ -310,7 +314,7 @@ async def main(page: ft.Page):
             ft.Container(page.status_ctrl, expand=True),
             #ft.IconButton(icon=ft.Icons.SEARCH, icon_color=ft.Colors.WHITE, on_click=on_search),
             #ft.IconButton(icon=ft.Icons.PRICE_CHECK, icon_color=ft.Colors.WHITE),
-            ft.IconButton(icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE),
+            ft.IconButton(icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE, on_click=open_documents),
             ft.FloatingActionButton(icon=ft.Icons.ADD, on_click=open_poducts),
             ft.FloatingActionButton(icon=ft.Icons.DELETE, on_click=lambda evt: page.basket.clearing())
         ]

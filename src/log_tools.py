@@ -1,6 +1,7 @@
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("flet_core").setLevel(logging.INFO)
 
 LN = logging.NOTSET
 LD = logging.DEBUG
