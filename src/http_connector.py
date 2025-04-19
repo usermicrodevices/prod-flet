@@ -31,7 +31,7 @@ class HttpConnector():
         self.url_products_cash = f'{self.url_base}/api/products/cash/'
         self.url_doc_cash = f'{self.url_base}/api/doc/cash/'
         self.url_documents = f'{self.url_base}/api/docs/'
-        self.url_sales_receipt = f'{self.url_base}/api/doc/%s/sales_receipt'
+        self.url_sales_receipt = f'{self.url_base}/api/doc/%s/sales_receipt%s'
         self.page = page
 
     async def __aenter__(self):
@@ -185,8 +185,8 @@ class HttpConnector():
         page_max = int(response.headers.get('page_max', 0))
         return page_max, data, msg
 
-    def get_sales_receipt(self, id_doc=0):
-        url_args = self.url_sales_receipt % f'{id_doc}'
+    def get_sales_receipt(self, id_doc=0, urlargs='?pdf=wkhtmltopdf'):
+        url_args = self.url_sales_receipt % (f'{id_doc}', urlargs)
         self.log(LD, ['🎂GET🎂', url_args])
         try:
             response = self.session.get(url_args)
