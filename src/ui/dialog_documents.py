@@ -1,4 +1,5 @@
-import sys, subprocess
+import sys
+from subprocess import Popen, PIPE, STDOUT
 #from pypdf import PdfWriter
 import flet as ft
 from log_tools import *
@@ -78,15 +79,16 @@ class DocumentsDialog(ft.AlertDialog):
         self.log(LD, ['ON_SELECT', evt.data, evt.control.data])
         if evt.control.data:
             doc_id = evt.control.data['pk']
-            html_content, msg = self.page.http_conn.get_sales_receipt(doc_id)
-            self.log(LD, [msg, html_content])
-            if html_content:
+            printer_content, msg = self.page.http_conn.get_sales_receipt(doc_id)
+            self.log(LD, [msg, printer_content])
+            if printer_content:
                 #pdf = PdfWriter()
                 #pdf.add_attachment(f'sales_receipt_{doc_id}.pdf', html_content.decode('utf-8'))
-                lp = subprocess.Popen('lpr', stdin=subprocess.PIPE, encoding='utf-8')
                 #pdf.write_stream(lp.stdin)
                 #pdf.write('/dev/lpr')
-                res = lp.stdin.write(html_content.decode('utf-8'))
+                lp = Popen(['lpr'], stdin=PIPE, stdout=PIPE, stderr=STDOUT)#, encoding='utf-8')
+                #res = lp.stdin.write(printer_content.decode('utf-8'))
+                res = lp.communicate(input=printer_content)
                 self.log(LD, ['LPR RESULT', res])
         self.page.close(self)
 
