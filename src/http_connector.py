@@ -32,6 +32,7 @@ class HttpConnector():
         self.url_doc_cash = f'{self.url_base}/api/doc/cash/'
         self.url_documents = f'{self.url_base}/api/docs/'
         self.url_sales_receipt = f'{self.url_base}/api/doc/%s/sales_receipt%s'
+        self.url_customers = f'{self.url_base}/api/customers/'
         self.page = page
 
     async def __aenter__(self):
@@ -42,8 +43,12 @@ class HttpConnector():
         while not self.page:
             await asyncio.sleep(1)
 
+    @property
+    def method_name(self):
+        return f'{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+
     def log(self, lvl=LN, msgs=[], *args, **kwargs):
-        s = f'{LICONS[lvl]}::{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        s = f'{LICONS[lvl]}::{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
         for m in msgs:
             s += f'::{m}'
             if hasattr(m, '__traceback__'):
@@ -199,3 +204,23 @@ class HttpConnector():
         self.log(LD, ['🎂SESSION.HEADERS🎂', self.session.headers])
         #return response.content.decode('utf8'), ''
         return response.content, ''
+
+    def get_customers(self, id_page=1, limit=100):
+        data = []
+        url_args = f'{self.url_customers}?limit={limit}&page={id_page}'
+        self.log(LD, ['🎂GET🎂', url_args])
+        try:
+            response = self.session.get(url_args)
+        except Exception as e:
+            self.log(LE, [e])
+            return {}, data
+        self.log(LD, ['🎂RESPONSE🎂', response.status_code])
+        self.log(LD, ['🎂RESPONSE.HEADERS🎂', response.headers])
+        self.log(LD, ['🎂SESSION.COOKIES🎂', self.session.cookies])
+        self.log(LD, ['🎂SESSION.HEADERS🎂', self.session.headers])
+        if response.status_code == 200:
+            data = eval(json.loads(response.content))
+        else:
+            self.log(LW, ['🎂RESPONSE.CONTENT🎂', json.loads(response.content)])
+        self.log(LD, ['🎂CUSTOMERS.LENGTH🎂', len(data)])
+        return response.headers, data

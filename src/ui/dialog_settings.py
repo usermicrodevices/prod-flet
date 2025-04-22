@@ -1,6 +1,7 @@
 import flet as ft
 
-import logging
+from log_tools import *
+from background_tasks import sync_products
 
 
 class SettingsDialogAction(ft.CupertinoDialogAction):
@@ -75,5 +76,5 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('search_auto_min_count', self.search_auto_min_count.value)
             self.page.client_storage.set('search_auto_limit', self.search_auto_limit.value)
             if self.page.http_conn.auth(True) == 200:
-                self.page.run_thread(self.page.sync_products)
+                self.page.run_thread(sync_products, self.page)
         self.page.close(e.control.parent)
