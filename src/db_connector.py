@@ -74,8 +74,12 @@ class DbConnector():
             self.conn.close()
         self.lock.release()
 
+    @property
+    def method_name(self):
+        return f'{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+
     def log(self, lvl=LN, msgs=[], *args, **kwargs):
-        s = f'{LICONS[lvl]}::{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        s = f'{LICONS[lvl]}::{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
         for m in msgs:
             s += f'::{m}'
             if hasattr(m, '__traceback__'):
@@ -162,7 +166,7 @@ class DbConnector():
                     self.log(LI, ['NEW-TABLE', k, 'CREATED'])
         self.log(LI, ['EXISTS-TABLES', exists_tables])
 
-    def update_cache(self, cache_path: str = ''):
+    def update_cache(self, cache_path: str = '', table_names: list = ['products', 'customers']):
         if not cache_path:
             cache_path = self.cachepath
         self.lock.acquire(True)
@@ -173,28 +177,28 @@ class DbConnector():
             self.log(LE, [sql_expr, e])
         else:
             self.log(LI, ['SUCCESS', sql_expr])
-            tname = 'products'
-            sql_expr = f'DROP TABLE IF EXISTS {tname};'
-            try:
-                self.cur_cache.execute(sql_expr)
-            except Exception as e:
-                self.log(LE, [sql_expr, e])
-            else:
-                self.log(LI, ['CACHE-TABLE', tname, 'DROPED'])
-                sql_expr = f'CREATE TABLE {tname}{table_formats[tname]};'
+            for tname in table_names:
+                sql_expr = f'DROP TABLE IF EXISTS {tname};'
                 try:
                     self.cur_cache.execute(sql_expr)
                 except Exception as e:
                     self.log(LE, [sql_expr, e])
                 else:
-                    self.log(LI, ['CACHE-TABLE', tname, 'CREATED'])
-                    sql_expr = f'INSERT INTO cache.{tname} SELECT * FROM main.{tname};'
+                    self.log(LI, ['CACHE-TABLE', tname, 'DROPED'])
+                    sql_expr = f'CREATE TABLE {tname}{table_formats[tname]};'
                     try:
-                        self.cur.execute(sql_expr)
+                        self.cur_cache.execute(sql_expr)
                     except Exception as e:
                         self.log(LE, [sql_expr, e])
                     else:
-                        self.log(LI, ['SUCCESS', sql_expr])
+                        self.log(LI, ['CACHE-TABLE', tname, 'CREATED'])
+                        sql_expr = f'INSERT INTO cache.{tname} SELECT * FROM main.{tname};'
+                        try:
+                            self.cur.execute(sql_expr)
+                        except Exception as e:
+                            self.log(LE, [sql_expr, e])
+                        else:
+                            self.log(LI, ['SUCCESS', sql_expr])
             sql_expr = 'DETACH cache;'
             try:
                 self.cur.execute(sql_expr)
@@ -218,12 +222,25 @@ class DbConnector():
         }
 
     def record_as_dict(self, v):
-        return {'rowid':v[0], 'doc_type':v[1], 'registered_at':v[2], 'product':v[3], 'count':v[4], 'cost':v[5], 'price':v[6], 'sum_final':v[7], 'currency':eval(v[8]) if v[8] else {}, 'customer':v[9]}
+        return {'rowid':v[0],
+            'doc_type':v[1],
+            'registered_at':v[2],
+            'product':v[3],
+            'count':v[4],
+            'cost':v[5],
+            'price':v[6],
+            'sum_final':v[7],
+            'currency':eval(v[8]) if v[8] else {},
+            'customer':v[9]
+        }
+
+    def customer_as_dict(self, v):
+        return {'id':v[0], 'name':v[1], 'extinfo':eval(v[2]) if v[2] else {}}
 
     def update_products(self, *args, **kwargs):
         updated = 0
         if not self.cur:
-            return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return updated, f'{self.method_name} CURSOR INVALID'
         data = kwargs.get('data', [])
         self.log(LD, ['👌RECEIVED PRODUCTS👌', len(data)])
         if data:
@@ -247,29 +264,29 @@ class DbConnector():
                             updated += 1
                 except Exception as e:
                     self.lock.release()
-                    return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
+                    return updated, f'{self.method_name} {e}'
                 else:
                     self.log(LD, ['👌EXECUTEMANY UPDATE SUCCESS'])
                     updated = self.cur.rowcount
             except Exception as e:
                 self.lock.release()
-                return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}{e}'
+                return updated, f'{self.method_name}{e}'
             else:
                 self.log(LD, ['👌EXECUTEMANY INSERT SUCCESS'])
                 updated = self.cur.rowcount
             self.lock.release()
         self.log(LD, ['👌UPDATED PRODUCTS👌', updated])
-        return updated, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+        return updated, f'{self.method_name} SUCCESS'
 
     def search_products(self, *args, **kwargs):
         result = []
         if not self.cur_cache:
-            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return result, f'{self.method_name} CURSOR INVALID'
         if not len(args):
-            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING'
+            return result, f'{self.method_name} EMPTY SEARCH STRING'
         s = args[0]
         if not isinstance(s, (int, float)) and not s:
-            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY SEARCH STRING [{s}]'
+            return result, f'{self.method_name} EMPTY SEARCH STRING [{s}]'
         where_exp = f'''WHERE CASEFOLD(name) LIKE ('%{f"{s}".casefold()}%') OR article='{s}' OR barcodes LIKE ('%{s}%') OR qrcodes LIKE ('%{s}%')'''
         if s.isdigit():
             where_exp += f' OR id={s}'
@@ -280,15 +297,15 @@ class DbConnector():
             res = self.cur_cache.execute(sql_search)
         except Exception as e:
             self.lock.release()
-            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {sql_search} {e}'
+            return result, f'{self.method_name}: {sql_search} {e}'
         else:
             result = [self.product_as_dict(v) for v in res.fetchall()]
         self.lock.release()
-        return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+        return result, f'{self.method_name} SUCCESS'
 
     def get_products(self, *args, **kwargs):
         if not self.cur:
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return None, f'{self.method_name} CURSOR INVALID'
         limit, offset = kwargs.get('limit', 10), kwargs.get('offset', 0)
         self.lock.acquire(True)
         res = self.cur.execute(f'SELECT * FROM products LIMIT {limit} OFFSET {offset};')
@@ -297,11 +314,11 @@ class DbConnector():
             result = [self.product_as_dict(v) for v in res.fetchall()]
         self.lock.release()
         self.log(LD, [result])
-        return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+        return result, f'{self.method_name} SUCCESS'
 
     def get_products_count(self, *args, **kwargs):
         if not self.cur:
-            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return 0, f'{self.method_name} CURSOR INVALID'
         sql_count = 'SELECT COUNT(id) FROM products;'
         self.log(LD, ['✅☑GET_PRODUCTS_COUNT☑✅', sql_count])
         self.lock.acquire(True)
@@ -309,19 +326,34 @@ class DbConnector():
             res = self.cur.execute(sql_count)
         except Exception as e:
             self.lock.release()
-            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}: {sql_count} {e}'
+            return 0, f'{self.method_name}: {sql_count} {e}'
         else:
             result = res.fetchone()[0]
             self.lock.release()
-            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+            return result, f'{self.method_name} SUCCESS'
         self.lock.release()
-        return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} UNKNOWN ERROR'
+        return 0, f'{self.method_name} UNKNOWN ERROR'
+
+    def clear_products(self):
+        if not self.cur:
+            return 0, f'{self.method_name} CURSOR INVALID'
+        sql_query = f'DELETE FROM products;'
+        self.log(LD, [sql_query])
+        self.lock.acquire(True)
+        try:
+            self.cur.execute(sql_query)
+        except Exception as e:
+            self.lock.release()
+            self.log(LE, [sql_query, e])
+            return 0, f'{self.method_name} ERROR: {e}'
+        self.lock.release()
+        return self.cur.rowcount, f'{self.method_name} FINISHED'
 
     def insert_records(self, data):
         if not self.cur:
-            return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return False, f'{self.method_name} CURSOR INVALID'
         if not data:
-            return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY DATA'
+            return False, f'{self.method_name} EMPTY DATA'
         else:
             #self.log(LI, [data])
             self.lock.acquire(True)
@@ -329,13 +361,13 @@ class DbConnector():
                 self.cur.executemany('INSERT INTO records VALUES(:doc_type, :registered_at, :product, :count, :cost, :price, :sum_final, :currency, :customer)', data)
             except Exception as e:
                 self.lock.release()
-                return False, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} {e}'
+                return False, f'{self.method_name} {e}'
             self.lock.release()
-        return True, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
+        return True, f'{self.method_name} SUCCESS'
 
     def get_grouped_records(self, *args, **kwargs):
         if not self.cur:
-            return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return None, f'{self.method_name} CURSOR INVALID'
         sqlite3.register_converter('timestamp', lambda v: int(v))
         self.lock.acquire(True)
         regs = self.cur.execute('SELECT registered_at FROM records GROUP BY registered_at ORDER BY registered_at;')
@@ -354,14 +386,14 @@ class DbConnector():
         self.lock.release()
         if result and result[0]:
             self.log(LD, ['GET_GROUPED_RECORDS', result])
-            return result, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} SUCCESS'
-        return None, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} EMPTY RECORDS'
+            return result, f'{self.method_name} SUCCESS'
+        return None, f'{self.method_name} EMPTY RECORDS'
 
     def clear_records(self, ids: list):
         if not self.cur:
-            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
+            return 0, f'{self.method_name} CURSOR INVALID'
         if not ids:
-            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} INDEXES EMPTY'
+            return 0, f'{self.method_name} INDEXES EMPTY'
         sql_list_ids = f'({ids[0]})' if len(ids) == 1 else f'{tuple(ids)}'
         sql_query = f'DELETE FROM records WHERE rowid IN {sql_list_ids};'
         self.log(LD, [sql_query])
@@ -372,16 +404,113 @@ class DbConnector():
         except Exception as e:
             self.lock.release()
             self.log(LE, [sql_query, e])
-            return count_records, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} ERROR: {e}'
+            return count_records, f'{self.method_name} ERROR: {e}'
         else:
             count_records = self.cur.rowcount
         self.lock.release()
-        return count_records, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} FINISHED'
+        return count_records, f'{self.method_name} FINISHED'
 
-    def clear_local_products(self):
+    def update_customers(self, *args, **kwargs):
+        updated = 0
         if not self.cur:
-            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} CURSOR INVALID'
-        sql_query = f'DELETE FROM products;'
+            return updated, f'{self.method_name} CURSOR INVALID'
+        data = kwargs.get('data', [])
+        self.log(LD, ['🆗✌RECEIVED CUSTOMERS✌🆗', len(data)])
+        if data:
+            self.lock.acquire(True)
+            try:
+                self.cur.executemany('INSERT OR REPLACE INTO customers VALUES(:id, :name, :extinfo);', data)
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                if 'UNIQUE constraint failed' not in f'{e}':
+                    self.log(LD, ['UPDATED CUSTOMERS EXECUTEMANY INSERT', e])
+                try:
+                    self.cur.executemany('UPDATE customers SET name=:name, extinfo=:extinfo WHERE id=:id;', data)
+                except (sqlite3.IntegrityError, sqlite3.OperationalError) as e:
+                    self.log(LD, ['UPDATED CUSTOMERS EXECUTEMANY UPDATE', e])
+                    for v in data:
+                        sql_query = f'''UPDATE customers SET name='{v["name"]}', extinfo="{v['extinfo']}" WHERE id={v['id']};'''
+                        try:
+                            self.cur.execute(sql_query)
+                        except Exception as e:
+                            self.log(LE, [sql_query, e])
+                        else:
+                            updated += 1
+                except Exception as e:
+                    self.lock.release()
+                    return updated, f'{self.method_name} {e}'
+                else:
+                    self.log(LD, ['🆗✌EXECUTEMANY UPDATE SUCCESS'])
+                    updated = self.cur.rowcount
+            except Exception as e:
+                self.lock.release()
+                return updated, f'{self.method_name}{e}'
+            else:
+                self.log(LD, ['🆗✌EXECUTEMANY INSERT SUCCESS'])
+                updated = self.cur.rowcount
+            self.lock.release()
+        self.log(LD, ['🆗✌UPDATED CUSTOMERS✌🆗', updated])
+        return updated, f'{self.method_name} SUCCESS'
+
+    def search_customers(self, *args, **kwargs):
+        result = []
+        if not self.cur_cache:
+            return result, f'{self.method_name} CURSOR INVALID'
+        if not len(args):
+            return result, f'{self.method_name} EMPTY SEARCH STRING'
+        s = args[0]
+        if not isinstance(s, (int, float)) and not s:
+            return result, f'{self.method_name} EMPTY SEARCH STRING [{s}]'
+        where_exp = f'''WHERE CASEFOLD(name) LIKE ('%{f"{s}".casefold()}%')'''
+        if s.isdigit() and kwargs.get('search_id', False):
+            where_exp += f' OR id={s}'
+        sql_search = f'SELECT * FROM customers {where_exp}{kwargs.get("limit_expression", "")};'
+        self.log(LD, ['🆗✌SEARCH_CUSTOMERS✌🆗', sql_search])
+        self.lock.acquire(True)
+        try:
+            res = self.cur_cache.execute(sql_search)
+        except Exception as e:
+            self.lock.release()
+            return result, f'{self.method_name}: {sql_search} {e}'
+        else:
+            result = [self.customer_as_dict(v) for v in res.fetchall()]
+        self.lock.release()
+        return result, f'{self.method_name} SUCCESS'
+
+    def get_customers(self, *args, **kwargs):
+        if not self.cur:
+            return None, f'{self.method_name} CURSOR INVALID'
+        limit, offset = kwargs.get('limit', 10), kwargs.get('offset', 0)
+        self.lock.acquire(True)
+        res = self.cur.execute(f'SELECT * FROM customers LIMIT {limit} OFFSET {offset};')
+        result = None
+        if res:
+            result = [self.customer_as_dict(v) for v in res.fetchall()]
+        self.lock.release()
+        self.log(LD, [result])
+        return result, f'{self.method_name} SUCCESS'
+
+    def get_customers_count(self, *args, **kwargs):
+        if not self.cur:
+            return 0, f'{self.method_name} CURSOR INVALID'
+        sql_count = 'SELECT COUNT(id) FROM customers;'
+        self.log(LD, ['🆗✌GET_CUSTOMERS_COUNT✌🆗', sql_count])
+        self.lock.acquire(True)
+        try:
+            res = self.cur.execute(sql_count)
+        except Exception as e:
+            self.lock.release()
+            return 0, f'{self.method_name}: {sql_count} {e}'
+        else:
+            result = res.fetchone()[0]
+            self.lock.release()
+            return result, f'{self.method_name} SUCCESS'
+        self.lock.release()
+        return 0, f'{self.method_name} UNKNOWN ERROR'
+
+    def clear_customers(self):
+        if not self.cur:
+            return 0, f'{self.method_name} CURSOR INVALID'
+        sql_query = f'DELETE FROM customers;'
         self.log(LD, [sql_query])
         self.lock.acquire(True)
         try:
@@ -389,6 +518,6 @@ class DbConnector():
         except Exception as e:
             self.lock.release()
             self.log(LE, [sql_query, e])
-            return 0, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} ERROR: {e}'
+            return 0, f'{self.method_name} ERROR: {e}'
         self.lock.release()
-        return self.cur.rowcount, f'{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name} FINISHED'
+        return self.cur.rowcount, f'{self.method_name} FINISHED'

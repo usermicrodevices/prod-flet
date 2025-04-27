@@ -1,6 +1,7 @@
 import flet as ft
 
-import logging
+from log_tools import *
+from background_tasks import sync_products
 
 
 class DialogAction(ft.TextButton):
@@ -76,7 +77,7 @@ class ProductsDialog(ft.AlertDialog):
 
     def handle_action_click(self, evt):
         if evt.control.is_ok:
-            self.page.sync_products()
+            self.page.run_thread(sync_products, self.page)
         self.page.close(evt.control.parent)
 
     def handle_prev(self, evt):

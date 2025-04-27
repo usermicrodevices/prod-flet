@@ -3,17 +3,20 @@ from time import sleep
 from threading import current_thread
 
 import flet as ft
-import flet_permission_handler as fph
+try:
+    import flet_permission_handler as fph
+except:
+    fph = None
 
 from log_tools import *
 from hardware import mer328ac
-from camera import CameraMaster
 from http_connector import HttpConnector
 from db_connector import DbConnector
 from ui.dialog_settings import SettingsDialog
 from ui.dialog_products import ProductsDialog
 from ui.dialog_documents import DocumentsDialog
 from ui.control_basket import BasketControl
+from background_tasks import sync_products, sync_sales
 
 
 async def main(page: ft.Page):
@@ -24,8 +27,10 @@ async def main(page: ft.Page):
     page.window.maximized = True
     page.theme_mode = ft.ThemeMode.LIGHT
 
-    ph = fph.PermissionHandler()
-    page.overlay.append(ph)
+    ph = None
+    if fph:
+        ph = fph.PermissionHandler()
+        page.overlay.append(ph)
 
     alert_dlg = ft.AlertDialog(modal=True, actions=[ft.TextButton('ok', on_click=lambda e: page.close(e.control.parent))])
     def alert(msg: str, caption: str = 'error'):
@@ -41,7 +46,8 @@ async def main(page: ft.Page):
                                ft.Text(size=size_status_text, value='🛒0'),
                                ft.Text(size=size_status_text, value='🗒'),
                                ft.Text(size=size_status_text, value='📴'),
-                               ft.Text(size=size_status_text, value='💬')])
+                               ft.Text(size=size_status_text, value='💬'),
+                               ft.Text(size=size_status_text, value='👨')])
 
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
@@ -66,11 +72,25 @@ async def main(page: ft.Page):
             update_status_ctrl({3:'📴'})
     page.scan_barcode_close = scan_barcode_close
 
+    def search_switch():
+        if page.bar_search_products.on_change:
+            search_close_autocompletes()
+            page.bar_search_products.on_change = None
+            page.bar_search_products.on_tap = None
+            update_status_ctrl({4:'🎮'})
+        else:
+            page.bar_search_products.on_change = on_search_change
+            page.bar_search_products.on_tap = open_autocomplete
+            page.bar_search_products.update()
+            update_status_ctrl({4:'💬'})
+
     def scan_barcode(evt: ft.ControlEvent):
-        if ft.utils.platform_utils.is_mobile():
+        ismobile = ft.utils.platform_utils.is_mobile()
+        if ismobile and fph and ph:
             if not ph.check_permission(fph.PermissionType.CAMERA, 5):
                 ph.request_permission(fph.PermissionType.CAMERA)
-        if not page.scan_img:
+        if not page.scan_img and not ismobile:
+            from camera import CameraMaster
             page.scan_img = CameraMaster(reader_callback=product_add, width=320, height=240, expand=True)
             if not page.scan_img.cap:
                 update_status_ctrl({3:'📴'})#📽
@@ -80,45 +100,17 @@ async def main(page: ft.Page):
                 content_panel.update()
         else:
             page.scan_barcode_close()
+        search_switch()
 
     page.db_conn = None
     page.http_conn = None
     page.products = {}
     page.scales = None
     page.scales_unit_ids = []
+    page.customer = None
 
     page.sync_products_running = False
-    def sync_products():
-        if page.sync_products_running:
-            logging.debug('sync_products is running now')
-            return
-        page.sync_products_running = True
-        if page.http_conn.auth_succes:
-            def db_update_products(prods):
-                count_updated = 0
-                if prods:
-                    count_updated, msg = page.db_conn.update_products(data=prods)
-                    logging.debug(['UPDATED_PRODUCTS', count_updated, msg])
-                return count_updated
-            headers, prods = page.http_conn.get_products_cash()
-            updated_products = db_update_products(prods)
-            full_products, msg = page.db_conn.get_products_count()
-            update_status_ctrl({0:f'{full_products}🧷{updated_products}'})
-            page_max = int(headers.get('page_max', 0))
-            logging.debug(['PAGE_MAX', page_max])
-            if page_max > 1:
-                for p in range(2, page_max):
-                    headers, prods = page.http_conn.get_products_cash(p)
-                    updated_products += db_update_products(prods)
-                    full_products, msg = page.db_conn.get_products_count()
-                    update_status_ctrl({0:f'{full_products}🧷{updated_products}'})
-            if updated_products:
-                page.db_conn.update_cache()
-        else:
-            logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
-            status_code = page.http_conn.auth()
-        page.sync_products_running = False
-    page.sync_products = sync_products
+    #page.sync_products = sync_products
 
     def after_page_loaded(page):
         logging.debug('PAGE NOW IS LOADED. NEXT CHECK LOCAL DATABASE CONNECTION...')
@@ -138,10 +130,10 @@ async def main(page: ft.Page):
         logging.debug('CHECK REMOTE NETWORK CONNECTION...')
         page.http_conn = HttpConnector(page)
         status_code = page.http_conn.auth(show_alert=True)
-        sync_products()
+        sync_products(page)
     page.run_thread(after_page_loaded, page)
 
-    def background_sync_products():
+    def infinity_sync_products():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⏰ RUN {self_name}... ⏰')
         while True:
@@ -156,37 +148,11 @@ async def main(page: ft.Page):
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC PRODUCTS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
             else:
                 logging.debug(f'⏰ {self_name} RUN SYNC PRODUCTS... ⏰')
-                sync_products()
+                sync_products(page)
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC PRODUCTS FINISHED ⌛⌛⌛')
-    page.run_thread(background_sync_products)
+    page.run_thread(infinity_sync_products)
 
-    def sync_sales():
-        recs, msg = page.db_conn.get_grouped_records()
-        if not recs:
-            logging.debug(msg)
-        else:
-            for doc_recs in recs:
-                frec = doc_recs[0]
-                data = {'sum_final':float(frec['sum_final']), 'registered_at':frec['registered_at'].strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':frec['doc_type'], 'customer':frec['customer']}
-                records, rowids = [], []
-                for rec in doc_recs:
-                    record = {'product':rec['product'], 'count':rec['count'], 'price':rec['price'], 'currency_id':rec['currency']['id']}
-                    records.append(record)
-                    rowids.append(rec['rowid'])
-                data['records'] = records
-                sended = False
-                if page.http_conn.auth_succes:
-                    sended = page.http_conn.post_doc_cash(data)
-                    logging.debug(['SALE FINISH SEND TO SERVER', sended])
-                if not sended:
-                    logging.debug('CONNECTION ERROR')
-                    status_code = page.http_conn.auth()
-                    break
-                elif rowids:
-                    cleared_count, msg = page.db_conn.clear_records(rowids)
-                    logging.debug(['CLEARED LOCAL RECORDS', cleared_count, msg])
-
-    def background_sync_sales():
+    def infinity_sync_sales():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⏰ RUN {self_name}... ⏰')
         while True:
@@ -201,9 +167,9 @@ async def main(page: ft.Page):
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC SALES IS RUNNING NOW, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
             else:
                 logging.debug(f'⏰ {self_name} RUN SYNC SALES... ⏰')
-                sync_sales()
+                sync_sales(page)
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
-    page.run_thread(background_sync_sales)
+    page.run_thread(infinity_sync_sales)
 
     def open_autocomplete(evt):
         page.bar_search_products.open_view()
@@ -308,15 +274,11 @@ async def main(page: ft.Page):
 
     bottomappbar_content = ft.Row(
         controls=[
-            ft.IconButton(icon=ft.Icons.MENU, icon_color=ft.Colors.WHITE, on_click=on_click_pagelet),
-            #ft.SearchBar(bar_hint_text="Search products...", on_tap=on_search, on_submit=on_search, expand=True, autofocus=True)
-            #ft.Container(expand=True),
+            ft.IconButton(icon_size=20, icon=ft.Icons.MENU, icon_color=ft.Colors.WHITE, on_click=on_click_pagelet),
             ft.Container(page.status_ctrl, expand=True),
-            #ft.IconButton(icon=ft.Icons.SEARCH, icon_color=ft.Colors.WHITE, on_click=on_search),
-            #ft.IconButton(icon=ft.Icons.PRICE_CHECK, icon_color=ft.Colors.WHITE),
-            ft.IconButton(icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE, on_click=open_documents),
-            ft.FloatingActionButton(icon=ft.Icons.ADD, on_click=open_poducts),
-            ft.FloatingActionButton(icon=ft.Icons.DELETE, on_click=lambda evt: page.basket.clearing())
+            ft.IconButton(icon_size=20, icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE, on_click=open_documents),
+            ft.IconButton(icon_size=20, icon=ft.Icons.ADD, on_click=open_poducts),
+            ft.IconButton(icon_size=20, icon=ft.Icons.DELETE, on_click=lambda evt: page.basket.clearing())
         ]
     )
 
@@ -338,8 +300,12 @@ async def main(page: ft.Page):
         elif evt.control.selected_index == 1:
             page.open(ProductsDialog(page=page))
         elif evt.control.selected_index == 2:
-            page.db_conn.clear_local_products()
-            sync_products()
+            if not page.sync_products_running:
+                cnt, msg = page.db_conn.clear_products()
+                logging.debug([msg, cnt])
+                page.run_thread(sync_products, page)
+                #cnt, msg = page.db_conn.clear_customers()
+                #logging.debug([msg, cnt])
         elif evt.control.selected_index == 3:
             page.client_storage.set('user', {})
             if page.platform == 'android':
@@ -402,14 +368,7 @@ async def main(page: ft.Page):
         if evt.key == 'F11':
             basket_order_customer()
         if evt.key == 'F5':
-            if page.bar_search_products.on_change:
-                page.bar_search_products.on_change = None
-                search_close_autocompletes()
-                update_status_ctrl({4:'🎮'})
-            else:
-                page.bar_search_products.on_change = on_search_change
-                page.bar_search_products.update()
-                update_status_ctrl({4:'💬'})
+            search_switch()
         #elif evt.key in ['Enter', 'Numpad Enter'] and page.__keyboard_buffer__:
             #product_add(page.__keyboard_buffer__)
             #page.__keyboard_buffer__ = ''
