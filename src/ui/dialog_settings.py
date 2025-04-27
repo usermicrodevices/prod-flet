@@ -75,6 +75,16 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('scales_unit_ids', self.scales_unit_ids.value)
             self.page.client_storage.set('search_auto_min_count', self.search_auto_min_count.value)
             self.page.client_storage.set('search_auto_limit', self.search_auto_limit.value)
+            if self.page.http_conn.http_protocol != self.protocol.value:
+                self.page.http_conn.http_protocol = self.protocol.value or 'http://'
+            if self.page.http_conn.http_host != self.host.value:
+                self.page.http_conn.http_host = self.host.value
+            if self.page.http_conn.http_port != self.port.value:
+                self.page.http_conn.http_port = self.port.value
+            if self.page.http_conn.http_login != self.login.value:
+                self.page.http_conn.http_login = self.login.value
+            if self.page.http_conn.http_password != self.password.value:
+                self.page.http_conn.http_password = self.password.value
             if self.page.http_conn.auth(True) == 200:
-                self.page.run_thread(sync_products, self.page, True, True)
+                self.page.run_thread(sync_products, self.page)
         self.page.close(e.control.parent)

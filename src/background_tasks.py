@@ -7,15 +7,11 @@ def db_update_products(data_prods):
         logging.debug(['UPDATED_PRODUCTS', count_updated, msg])
     return count_updated
 
-def sync_products(page, reauth=False, showalert=False):
+def sync_products(page):
     if page.sync_products_running:
         logging.debug('sync_products is running now')
         return
     page.sync_products_running = True
-    if reauth:
-        status_code = page.http_conn.auth(showalert)
-        if status_code != 200:
-            return
     if page.http_conn.auth_success:
         headers, prods = page.http_conn.get_products_cash()
         updated_products = db_update_products(prods)
