@@ -76,5 +76,5 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('search_auto_min_count', self.search_auto_min_count.value)
             self.page.client_storage.set('search_auto_limit', self.search_auto_limit.value)
             if self.page.http_conn.auth(True) == 200:
-                self.page.run_thread(sync_products, self.page)
+                self.page.run_thread(sync_products, self.page, True, True)
         self.page.close(e.control.parent)

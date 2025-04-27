@@ -1,17 +1,22 @@
 from log_tools import *
 
-def sync_products(page):
+def db_update_products(data_prods):
+    count_updated = 0
+    if data_prods:
+        count_updated, msg = page.db_conn.update_products(data=data_prods)
+        logging.debug(['UPDATED_PRODUCTS', count_updated, msg])
+    return count_updated
+
+def sync_products(page, reauth=False, showalert=False):
     if page.sync_products_running:
         logging.debug('sync_products is running now')
         return
     page.sync_products_running = True
-    if page.http_conn.auth_succes:
-        def db_update_products(dt):
-            count_updated = 0
-            if dt:
-                count_updated, msg = page.db_conn.update_products(data=dt)
-                logging.debug(['UPDATED_PRODUCTS', count_updated, msg])
-            return count_updated
+    if reauth:
+        status_code = page.http_conn.auth(showalert)
+        if status_code != 200:
+            return
+    if page.http_conn.auth_success:
         headers, prods = page.http_conn.get_products_cash()
         updated_products = db_update_products(prods)
         full_products, msg = page.db_conn.get_products_count()
@@ -36,7 +41,7 @@ def sync_customers(page):
         logging.debug('sync_customers is running now')
         return
     page.sync_customers_running = True
-    if page.http_conn.auth_succes:
+    if page.http_conn.auth_success:
         def db_update_customers(dt):
             count_updated = 0
             if dt:
@@ -77,7 +82,7 @@ def sync_sales(page):
                 rowids.append(rec['rowid'])
             data['records'] = records
             sended = False
-            if page.http_conn.auth_succes:
+            if page.http_conn.auth_success:
                 sended = page.http_conn.post_doc_cash(data)
                 logging.debug(['SALE FINISH SEND TO SERVER', sended])
             if not sended:

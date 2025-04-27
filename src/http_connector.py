@@ -16,7 +16,7 @@ class CSRFParser(HTMLParser):
 
 class HttpConnector():
     session = requests.Session()
-    auth_succes = False
+    auth_success = False
 
     def __init__(self, page: flet.Page):
         self.http_protocol = page.client_storage.get('protocol') or 'http://'
@@ -59,7 +59,7 @@ class HttpConnector():
         self.page.alert(msg, caption)
 
     def auth(self, show_alert=False):
-        self.auth_succes = False
+        self.auth_success = False
         self.page.client_storage.set('user', {})
         self.log(LD, ['🍪GET🍪', self.url_admin])
         try:
@@ -85,7 +85,7 @@ class HttpConnector():
                 self.log(LD, ['🍰RESPONSE🍰', response.status_code])
                 self.log(LD, ['🍰SESSION.COOKIES🍰', self.session.cookies])
                 if response.status_code == 200:
-                    self.auth_succes = True
+                    self.auth_success = True
                     self.session.headers['X-CSRFToken'] = self.session.cookies.get('csrftoken', parser.csrfmiddlewaretoken)
                     user_data = {}
                     try:#data = response.json()
