@@ -3,11 +3,13 @@ from time import sleep
 from threading import current_thread
 
 import flet as ft
-import flet_permission_handler as fph
+try:
+    import flet_permission_handler as fph
+except:
+    fph = None
 
 from log_tools import *
 from hardware import mer328ac
-from camera import CameraMaster
 from http_connector import HttpConnector
 from db_connector import DbConnector
 from ui.dialog_settings import SettingsDialog
@@ -25,8 +27,10 @@ async def main(page: ft.Page):
     page.window.maximized = True
     page.theme_mode = ft.ThemeMode.LIGHT
 
-    ph = fph.PermissionHandler()
-    page.overlay.append(ph)
+    ph = None
+    if fph:
+        ph = fph.PermissionHandler()
+        page.overlay.append(ph)
 
     alert_dlg = ft.AlertDialog(modal=True, actions=[ft.TextButton('ok', on_click=lambda e: page.close(e.control.parent))])
     def alert(msg: str, caption: str = 'error'):
@@ -68,11 +72,25 @@ async def main(page: ft.Page):
             update_status_ctrl({3:'📴'})
     page.scan_barcode_close = scan_barcode_close
 
+    def search_switch():
+        if page.bar_search_products.on_change:
+            search_close_autocompletes()
+            page.bar_search_products.on_change = None
+            page.bar_search_products.on_tap = None
+            update_status_ctrl({4:'🎮'})
+        else:
+            page.bar_search_products.on_change = on_search_change
+            page.bar_search_products.on_tap = open_autocomplete
+            page.bar_search_products.update()
+            update_status_ctrl({4:'💬'})
+
     def scan_barcode(evt: ft.ControlEvent):
-        if ft.utils.platform_utils.is_mobile():
+        ismobile = ft.utils.platform_utils.is_mobile()
+        if ismobile and fph and ph:
             if not ph.check_permission(fph.PermissionType.CAMERA, 5):
                 ph.request_permission(fph.PermissionType.CAMERA)
-        if not page.scan_img:
+        if not page.scan_img and not ismobile:
+            from camera import CameraMaster
             page.scan_img = CameraMaster(reader_callback=product_add, width=320, height=240, expand=True)
             if not page.scan_img.cap:
                 update_status_ctrl({3:'📴'})#📽
@@ -82,6 +100,7 @@ async def main(page: ft.Page):
                 content_panel.update()
         else:
             page.scan_barcode_close()
+        search_switch()
 
     page.db_conn = None
     page.http_conn = None
@@ -255,15 +274,11 @@ async def main(page: ft.Page):
 
     bottomappbar_content = ft.Row(
         controls=[
-            ft.IconButton(icon=ft.Icons.MENU, icon_color=ft.Colors.WHITE, on_click=on_click_pagelet),
-            #ft.SearchBar(bar_hint_text="Search products...", on_tap=on_search, on_submit=on_search, expand=True, autofocus=True)
-            #ft.Container(expand=True),
+            ft.IconButton(icon_size=20, icon=ft.Icons.MENU, icon_color=ft.Colors.WHITE, on_click=on_click_pagelet),
             ft.Container(page.status_ctrl, expand=True),
-            #ft.IconButton(icon=ft.Icons.SEARCH, icon_color=ft.Colors.WHITE, on_click=on_search),
-            #ft.IconButton(icon=ft.Icons.PRICE_CHECK, icon_color=ft.Colors.WHITE),
-            ft.IconButton(icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE, on_click=open_documents),
-            ft.FloatingActionButton(icon=ft.Icons.ADD, on_click=open_poducts),
-            ft.FloatingActionButton(icon=ft.Icons.DELETE, on_click=lambda evt: page.basket.clearing())
+            ft.IconButton(icon_size=20, icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE, on_click=open_documents),
+            ft.IconButton(icon_size=20, icon=ft.Icons.ADD, on_click=open_poducts),
+            ft.IconButton(icon_size=20, icon=ft.Icons.DELETE, on_click=lambda evt: page.basket.clearing())
         ]
     )
 
@@ -353,14 +368,7 @@ async def main(page: ft.Page):
         if evt.key == 'F11':
             basket_order_customer()
         if evt.key == 'F5':
-            if page.bar_search_products.on_change:
-                page.bar_search_products.on_change = None
-                search_close_autocompletes()
-                update_status_ctrl({4:'🎮'})
-            else:
-                page.bar_search_products.on_change = on_search_change
-                page.bar_search_products.update()
-                update_status_ctrl({4:'💬'})
+            search_switch()
         #elif evt.key in ['Enter', 'Numpad Enter'] and page.__keyboard_buffer__:
             #product_add(page.__keyboard_buffer__)
             #page.__keyboard_buffer__ = ''
