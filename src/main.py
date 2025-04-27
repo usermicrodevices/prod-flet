@@ -15,8 +15,9 @@ from db_connector import DbConnector
 from ui.dialog_settings import SettingsDialog
 from ui.dialog_products import ProductsDialog
 from ui.dialog_documents import DocumentsDialog
+from ui.dialog_customer import CustomerDialog
 from ui.control_basket import BasketControl
-from background_tasks import sync_products, sync_sales
+from background_tasks import sync_products, sync_sales, sync_customers
 
 
 async def main(page: ft.Page):
@@ -107,10 +108,9 @@ async def main(page: ft.Page):
     page.products = {}
     page.scales = None
     page.scales_unit_ids = []
-    page.customer = None
 
     page.sync_products_running = False
-    #page.sync_products = sync_products
+    page.sync_customers_running = False
 
     def after_page_loaded(page):
         logging.debug('PAGE NOW IS LOADED. NEXT CHECK LOCAL DATABASE CONNECTION...')
@@ -131,9 +131,10 @@ async def main(page: ft.Page):
         page.http_conn = HttpConnector(page)
         status_code = page.http_conn.auth(show_alert=True)
         sync_products(page)
+        sync_customers(page)
     page.run_thread(after_page_loaded, page)
 
-    def infinity_sync_products():
+    def infinity_sync_cache():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⏰ RUN {self_name}... ⏰')
         while True:
@@ -144,13 +145,21 @@ async def main(page: ft.Page):
                 logging.error(e)
             logging.debug(f'⌛⌛⌛ {self_name} {sync_products_interval} SECONDS WAIT... ⌛⌛⌛')
             sleep(sync_products_interval)
+            ############################
             if page.sync_products_running:
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC PRODUCTS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
             else:
                 logging.debug(f'⏰ {self_name} RUN SYNC PRODUCTS... ⏰')
                 sync_products(page)
                 logging.debug(f'⌛⌛⌛ {self_name} SYNC PRODUCTS FINISHED ⌛⌛⌛')
-    page.run_thread(infinity_sync_products)
+            ############################
+            if page.sync_customers_running:
+                logging.debug(f'⌛⌛⌛ {self_name} SYNC CUSTOMERS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
+            else:
+                logging.debug(f'⏰ {self_name} RUN SYNC CUSTOMERS... ⏰')
+                sync_customers(page)
+                logging.debug(f'⌛⌛⌛ {self_name} SYNC CUSTOMERS FINISHED ⌛⌛⌛')
+    page.run_thread(infinity_sync_cache)
 
     def infinity_sync_sales():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
@@ -228,12 +237,19 @@ async def main(page: ft.Page):
     )
 
     def basket_order_customer(evt: ft.ControlEvent = None):
-        if len(page.basket.controls):
-            page.run_thread(page.basket.send_data, 'order_customer')
+        if page.client_storage.get('use_order_customer_dialog'):
+            page.open(CustomerDialog(doc_type='order_customer'))
+        else:
+            if len(page.basket.controls):
+                page.run_thread(page.basket.send_data, 'order_customer')
+        #logging.debug(f'🚗BASKET_ORDER_CUSTOMER; PRODUCTS-COUNT={len(page.basket.controls)}')
 
     def basket_sale(evt: ft.ControlEvent = None):
-        if len(page.basket.controls):
-            page.run_thread(page.basket.send_data)
+        if page.client_storage.get('use_sale_customer_dialog'):
+            page.open(CustomerDialog(doc_type='sale'))
+        else:
+            if len(page.basket.controls):
+                page.run_thread(page.basket.send_data)
 
     def basket_add_product(product: dict):
         headers, prod = page.http_conn.get_product(product['id'])
@@ -272,13 +288,16 @@ async def main(page: ft.Page):
     def open_documents(evt: ft.ControlEvent):
         page.open(DocumentsDialog(page=page))
 
+    def basket_clear(evt: ft.ControlEvent):
+        page.basket.clearing()
+
     bottomappbar_content = ft.Row(
         controls=[
             ft.IconButton(icon_size=20, icon=ft.Icons.MENU, icon_color=ft.Colors.WHITE, on_click=on_click_pagelet),
             ft.Container(page.status_ctrl, expand=True),
             ft.IconButton(icon_size=20, icon=ft.Icons.PRINT, icon_color=ft.Colors.WHITE, on_click=open_documents),
             ft.IconButton(icon_size=20, icon=ft.Icons.ADD, on_click=open_poducts),
-            ft.IconButton(icon_size=20, icon=ft.Icons.DELETE, on_click=lambda evt: page.basket.clearing())
+            ft.IconButton(icon_size=20, icon=ft.Icons.DELETE, on_click=basket_clear)
         ]
     )
 
@@ -358,24 +377,23 @@ async def main(page: ft.Page):
             page.update()
     page.on_resized = page_resize
 
-    page.__keyboard_buffer__ = ''
     def on_keyboard(evt: ft.KeyboardEvent):
-        if evt.key == 'Escape':
-            if alert_dlg.open:
-                page.close(alert_dlg)
-        if evt.key == 'F12':
-            basket_sale()
-        if evt.key == 'F11':
-            basket_order_customer()
-        if evt.key == 'F5':
-            search_switch()
-        #elif evt.key in ['Enter', 'Numpad Enter'] and page.__keyboard_buffer__:
-            #product_add(page.__keyboard_buffer__)
-            #page.__keyboard_buffer__ = ''
-        #else:
-            #data = evt.key.replace('Numpad ', '').replace('Num Lock', '')
-            #if data.isdigit():
-                #page.__keyboard_buffer__ += data
+        match evt.key:
+            case 'Escape':
+                if alert_dlg.open:
+                    page.close(alert_dlg)
+            case 'F2':
+                if evt.ctrl:
+                    del page.basket.customer
+                    page.update_status_ctrl({5:f'👨{page.basket.customer}'})
+                else:
+                    page.open(CustomerDialog())
+            case 'F5':
+                search_switch()
+            case 'F11':
+                basket_order_customer()
+            case 'F12':
+                basket_sale()
     page.on_keyboard_event = on_keyboard
 
 

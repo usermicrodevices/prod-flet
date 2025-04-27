@@ -1,6 +1,6 @@
 table_formats = {
 'products':'(id UNIQUE PRIMARY KEY, name VARCHAR , article VARCHAR, barcodes VARCHAR, qrcodes VARCHAR, cost REAL, price REAL, currency BLOB, unit BLOB, grp BLOB)',
-'records':'(doc_type VARCHAR DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB, customer INTEGER)',
+'records':'(doc_type VARCHAR DEFAULT "sale", registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, product INTEGER, count REAL, cost REAL DEFAULT 0.0, price REAL, sum_final REAL, currency BLOB, customer BLOB)',
 'customers':'(id UNIQUE PRIMARY KEY, name VARCHAR, extinfo BLOB)'
 }
 
@@ -231,7 +231,7 @@ class DbConnector():
             'price':v[6],
             'sum_final':v[7],
             'currency':eval(v[8]) if v[8] else {},
-            'customer':v[9]
+            'customer':eval(v[9]) if v[9] else {}
         }
 
     def customer_as_dict(self, v):

@@ -36,6 +36,11 @@ class SettingsDialog(ft.CupertinoAlertDialog):
         self.scales_unit_ids = ft.TextField(hint_text='1,2,3', label='units', expand=True, value=page.client_storage.get('scales_unit_ids'))
         self.search_auto_min_count = ft.TextField(hint_text='2', label='🔍 min', expand=True, value=page.client_storage.get('search_auto_min_count'))
         self.search_auto_limit = ft.TextField(hint_text='1000', label='🔍 limit', expand=True, value=page.client_storage.get('search_auto_limit'))
+        useordercustomerdialog = page.client_storage.get('use_order_customer_dialog')
+        if useordercustomerdialog is None:
+            useordercustomerdialog = True
+        self.use_order_customer_dialog = ft.Checkbox(label='use order customer dialog', expand=True, value=useordercustomerdialog)
+        self.use_sale_customer_dialog = ft.Checkbox(label='use sale customer dialog', expand=True, value=page.client_storage.get('use_sale_customer_dialog') or False)
         self.content = ft.Column(controls=[
             ft.Row([self.protocol, self.port]),
             ft.Row([self.host]),
@@ -48,7 +53,9 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             ft.Row([self.scales_baud, self.scales_timeout]),
             ft.Row([self.scales_wait_read, self.scales_ratio]),
             ft.Row([self.scales_unit_ids]),
-            ft.Row([self.search_auto_min_count, self.search_auto_limit])
+            ft.Row([self.search_auto_min_count, self.search_auto_limit]),
+            ft.Row([self.use_order_customer_dialog]),
+            ft.Row([self.use_sale_customer_dialog])
             ]
         )
         self.actions = [
@@ -75,6 +82,18 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('scales_unit_ids', self.scales_unit_ids.value)
             self.page.client_storage.set('search_auto_min_count', self.search_auto_min_count.value)
             self.page.client_storage.set('search_auto_limit', self.search_auto_limit.value)
+            self.page.client_storage.set('use_order_customer_dialog', self.use_order_customer_dialog.value)
+            self.page.client_storage.set('use_sale_customer_dialog', self.use_sale_customer_dialog.value)
+            if self.page.http_conn.http_protocol != self.protocol.value:
+                self.page.http_conn.http_protocol = self.protocol.value or 'http://'
+            if self.page.http_conn.http_host != self.host.value:
+                self.page.http_conn.http_host = self.host.value
+            if self.page.http_conn.http_port != self.port.value:
+                self.page.http_conn.http_port = self.port.value
+            if self.page.http_conn.http_login != self.login.value:
+                self.page.http_conn.http_login = self.login.value
+            if self.page.http_conn.http_password != self.password.value:
+                self.page.http_conn.http_password = self.password.value
             if self.page.http_conn.auth(True) == 200:
                 self.page.run_thread(sync_products, self.page)
         self.page.close(e.control.parent)

@@ -16,7 +16,7 @@ class CSRFParser(HTMLParser):
 
 class HttpConnector():
     session = requests.Session()
-    auth_succes = False
+    auth_success = False
 
     def __init__(self, page: flet.Page):
         self.http_protocol = page.client_storage.get('protocol') or 'http://'
@@ -59,7 +59,7 @@ class HttpConnector():
         self.page.alert(msg, caption)
 
     def auth(self, show_alert=False):
-        self.auth_succes = False
+        self.auth_success = False
         self.page.client_storage.set('user', {})
         self.log(LD, ['🍪GET🍪', self.url_admin])
         try:
@@ -85,7 +85,7 @@ class HttpConnector():
                 self.log(LD, ['🍰RESPONSE🍰', response.status_code])
                 self.log(LD, ['🍰SESSION.COOKIES🍰', self.session.cookies])
                 if response.status_code == 200:
-                    self.auth_succes = True
+                    self.auth_success = True
                     self.session.headers['X-CSRFToken'] = self.session.cookies.get('csrftoken', parser.csrfmiddlewaretoken)
                     user_data = {}
                     try:#data = response.json()
@@ -224,3 +224,21 @@ class HttpConnector():
             self.log(LW, ['🎂RESPONSE.CONTENT🎂', json.loads(response.content)])
         self.log(LD, ['🎂CUSTOMERS.LENGTH🎂', len(data)])
         return response.headers, data
+
+    def post_customer(self, data):
+        json_data = json.dumps(data)
+        self.log(LD, ['🎂POST🎂', self.url_customers, json_data])
+        try:
+            response = self.session.post(self.url_customers, json_data)
+        except Exception as e:
+            self.log(LE, [e])
+            return False
+        self.log(LD, ['🎂RESPONSE🎂', response.status_code])
+        self.log(LD, ['🎂SESSION.COOKIES🎂', self.session.cookies])
+        self.log(LD, ['🎂SESSION.HEADERS🎂', self.session.headers])
+        self.log(LD, ['🎂RESPONSE.CONTENT🎂', response.content])
+        if response.status_code != 200:
+            return False
+        res = eval(response.content.decode('utf8') if response.content else {})
+        self.log(LD, ['🎂RESPONSE.CONTENT🎂', res])
+        return True if res.get('result', 'error') == 'success' else False
