@@ -224,3 +224,21 @@ class HttpConnector():
             self.log(LW, ['🎂RESPONSE.CONTENT🎂', json.loads(response.content)])
         self.log(LD, ['🎂CUSTOMERS.LENGTH🎂', len(data)])
         return response.headers, data
+
+    def post_customer(self, data):
+        json_data = json.dumps(data)
+        self.log(LD, ['🎂POST🎂', self.url_customers, json_data])
+        try:
+            response = self.session.post(self.url_customers, json_data)
+        except Exception as e:
+            self.log(LE, [e])
+            return False
+        self.log(LD, ['🎂RESPONSE🎂', response.status_code])
+        self.log(LD, ['🎂SESSION.COOKIES🎂', self.session.cookies])
+        self.log(LD, ['🎂SESSION.HEADERS🎂', self.session.headers])
+        self.log(LD, ['🎂RESPONSE.CONTENT🎂', response.content])
+        if response.status_code != 200:
+            return False
+        res = eval(response.content.decode('utf8') if response.content else {})
+        self.log(LD, ['🎂RESPONSE.CONTENT🎂', res])
+        return True if res.get('result', 'error') == 'success' else False

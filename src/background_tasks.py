@@ -1,6 +1,6 @@
 from log_tools import *
 
-def db_update_products(data_prods):
+def db_update_products(page, data_prods):
     count_updated = 0
     if data_prods:
         count_updated, msg = page.db_conn.update_products(data=data_prods)
@@ -14,7 +14,7 @@ def sync_products(page):
     page.sync_products_running = True
     if page.http_conn.auth_success:
         headers, prods = page.http_conn.get_products_cash()
-        updated_products = db_update_products(prods)
+        updated_products = db_update_products(page, prods)
         full_products, msg = page.db_conn.get_products_count()
         page.update_status_ctrl({0:f'{full_products}🧷{updated_products}'})
         page_max = int(headers.get('page_max', 0))
@@ -22,7 +22,7 @@ def sync_products(page):
         if page_max > 1:
             for p in range(2, page_max):
                 headers, prods = page.http_conn.get_products_cash(p)
-                updated_products += db_update_products(prods)
+                updated_products += db_update_products(page, prods)
                 full_products, msg = page.db_conn.get_products_count()
                 page.update_status_ctrl({0:f'{full_products}🧷{updated_products}'})
         if updated_products:
@@ -32,20 +32,21 @@ def sync_products(page):
         status_code = page.http_conn.auth()
     page.sync_products_running = False
 
+def db_update_customers(page, data_customers):
+    count_updated = 0
+    if data_customers:
+        count_updated, msg = page.db_conn.update_customers(data=data_customers)
+        logging.debug(['UPDATED_CUSTOMERS', count_updated, msg])
+    return count_updated
+
 def sync_customers(page):
     if page.sync_customers_running:
         logging.debug('sync_customers is running now')
         return
     page.sync_customers_running = True
     if page.http_conn.auth_success:
-        def db_update_customers(dt):
-            count_updated = 0
-            if dt:
-                count_updated, msg = page.db_conn.update_customers(data=dt)
-                logging.debug(['UPDATED_CUSTOMERS', count_updated, msg])
-            return count_updated
         headers, customers = page.http_conn.get_customers()
-        updated_customers = db_update_customers(customers)
+        updated_customers = db_update_customers(page, customers)
         full_customers, msg = page.db_conn.get_customers_count()
         page.update_status_ctrl({5:f'{full_customers}🧷{updated_customers}'})
         page_max = int(headers.get('page_max', 0))
@@ -53,7 +54,7 @@ def sync_customers(page):
         if page_max > 1:
             for p in range(2, page_max):
                 headers, customers = page.http_conn.get_customers(p)
-                updated_customers += db_update_customers(customers)
+                updated_customers += db_update_customers(page, customers)
                 full_customers, msg = page.db_conn.get_customers_count()
                 page.update_status_ctrl({0:f'{full_customers}🧷{updated_customers}'})
         if updated_customers:

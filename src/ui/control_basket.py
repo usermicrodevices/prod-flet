@@ -31,6 +31,19 @@ class BasketControl(ft.ExpansionPanelList):
     #def handle_change_expansion_panel_item(self, e: ft.ControlEvent):
         #logging.debug(f'{e.data}; {e.control}')
 
+    @property
+    def customer(self):
+        return self.data['customer']['name']
+
+    @customer.setter
+    def customer(self, value):
+        if value:
+            self.data['customer']['name'] = value
+
+    @customer.deleter
+    def customer(self):
+        self.data['customer'] = {'id':None, 'name':'', 'extinfo':{}}
+
     def update_status_count(self, redraw_ctrl=True):
         self.page.update_status_ctrl({1:f'🛒{len(self.controls)}'}, redraw_ctrl)
 
@@ -38,6 +51,8 @@ class BasketControl(ft.ExpansionPanelList):
         self.controls = []
         self.update_status_count(False)
         self.sum_final.value = '0.0'
+        del self.customer
+        self.page.update_status_ctrl({5:'👨'}, False)
         self.page.update()
         self.page.bar_search_products.focus()
 
@@ -154,19 +169,19 @@ class BasketControl(ft.ExpansionPanelList):
         self.page.update()
         logging.debug(f'ADD_PRODUCT: {product}')
 
-    def send_data(self, data_type='sale'):
+    def send_data(self, data_type: str = 'sale'):
         if not self.controls:
             alert('basket is empty', 'warning')
         else:
             dtz_now = datetime.now().astimezone()
-            data = {'sum_final':self.sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':data_type, 'customer':self.data.get('customer', {}).get('id', None)}
+            data = {'sum_final':self.sum_final.value, 'registered_at':dtz_now.strftime('%Y-%m-%dT%H:%M:%S %z'), 'type':data_type, 'customer':self.data.get('customer', {})}
             records = []
             for item in self.controls:
                 record = {'product':item.data['product']['id'], 'count':item.data['ctrl_count'].value, 'price':item.data['product']['price'], 'currency':item.data['product']['currency']}
                 records.append(record)
             data['records'] = records
             sended = False
-            if self.page.http_conn.auth_succes:
+            if self.page.http_conn.auth_success:
                 sended = self.page.http_conn.post_doc_cash(data)
                 logging.debug(['SALE FINISH SEND TO SERVER', sended])
             if not sended:
