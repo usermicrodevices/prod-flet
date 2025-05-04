@@ -8,8 +8,7 @@ dependencies = [
   "flet>=0.27.6",
   "requests>=2.32.3",
   "pyserial>=3.5",
-  'opencv-python>=4.10.0 ; platform_system != "Android"',
-  'fletzxing @ git+https://github.com/usermicrodevices/fletzxing.git; platform_system=="Android"',
+  'fletzxing @ git+https://github.com/usermicrodevices/fletzxing.git',
   "flet-permission-handler @ git+https://github.com/flet-dev/flet-permission-handler.git"
   #"flet-permission-handler>=0.0.1",
   #"pypdf>=5.4.0",
