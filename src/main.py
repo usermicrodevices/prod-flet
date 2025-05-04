@@ -1,4 +1,4 @@
-import asyncio, inspect, os
+import asyncio, inspect, platform, os
 from time import sleep
 from threading import current_thread
 
@@ -18,6 +18,11 @@ from ui.dialog_documents import DocumentsDialog
 from ui.dialog_customer import CustomerDialog
 from ui.control_basket import BasketControl
 from background_tasks import sync_products, sync_sales, sync_customers
+
+if ft.utils.platform_utils.is_mobile() and platform.system() in ['Linux', 'Android']:
+    from fletzxing import ScanSuccessEvent, FletZxing
+elif not ft.utils.platform_utils.is_mobile():
+    from camera import CameraMaster
 
 
 async def main(page: ft.Page):
@@ -68,7 +73,10 @@ async def main(page: ft.Page):
             content_panel.controls.remove(page.scan_img)
             content_panel.update()
         if page.scan_img:
-            page.scan_img.close()
+            if hasattr(page.scan_img, 'content'):
+                page.scan_img.content = None
+            if hasattr(page.scan_img, 'close'):
+                page.scan_img.close()
             page.scan_img = None
             update_status_ctrl({3:'📴'})
     page.scan_barcode_close = scan_barcode_close
@@ -86,21 +94,36 @@ async def main(page: ft.Page):
             update_status_ctrl({4:'💬'})
 
     def scan_barcode(evt: ft.ControlEvent):
-        ismobile = ft.utils.platform_utils.is_mobile()
-        if ismobile and fph and ph:
-            if not ph.check_permission(fph.PermissionType.CAMERA, 5):
-                ph.request_permission(fph.PermissionType.CAMERA)
-        if not page.scan_img and not ismobile:
-            from camera import CameraMaster
-            page.scan_img = CameraMaster(reader_callback=product_add, width=320, height=240, expand=True)
-            if not page.scan_img.cap:
-                update_status_ctrl({3:'📴'})#📽
+        if page.client_storage.get('use_internal_scanner'):
+            ismobile = ft.utils.platform_utils.is_mobile()
+            if ismobile and fph and ph:
+                if not ph.check_permission(fph.PermissionType.CAMERA, 5):
+                    ph.request_permission(fph.PermissionType.CAMERA)
+            if not page.scan_img:
+                if ismobile:
+                    def on_scansuccess(evt: ScanSuccessEvent):
+                        logging.debug(f'‼📽ZXING VERSION: {evt.control.version}; ‼📹DATA: {evt.data}')
+                        update_status_ctrl({3:'📹'})
+                        code = eval(evt.data).get('value', '')
+                        if code:
+                            product_add(code)
+                        page.scan_barcode_close()
+                        page.scan_img = None
+                    page.scan_img = ft.Container(height=200, width=400, alignment=ft.alignment.center, bgcolor=ft.Colors.GREY_200, content=FletZxing(on_scan_success=on_scansuccess))
+                    update_status_ctrl({3:'🎦'})#📷📹
+                    content_panel.controls.insert(0, page.scan_img)
+                    content_panel.update()
+                else:
+                    page.scan_img = CameraMaster(reader_callback=product_add, width=320, height=240, expand=True)
+                    if not page.scan_img.cap:
+                        update_status_ctrl({3:'📴'})#📽
+                    else:
+                        update_status_ctrl({3:'🎦'})#📷📹
+                        content_panel.controls.insert(0, page.scan_img)
+                        content_panel.update()
             else:
-                update_status_ctrl({3:'🎦'})#📷📹
-                content_panel.controls.insert(0, page.scan_img)
-                content_panel.update()
-        else:
-            page.scan_barcode_close()
+                page.scan_barcode_close()
+                page.scan_img = None
         search_switch()
 
     page.db_conn = None
