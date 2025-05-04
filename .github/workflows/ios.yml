@@ -31,17 +31,17 @@ jobs:
         with:
           draft: false
           prerelease: false
-          release_name: ${{steps.version.outputs.version}}
-          tag_name: ${{github.ref}}
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
           body: "new release"
         env:
-          GITHUB_TOKEN: ${{github.token}}
+          GITHUB_TOKEN: ${{ github.token }}
       - name: upload darwin artifact
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{github.token}}
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          upload_url: ${{steps.create_release.outputs.upload_url}}
-          asset_path: build/ipa/*.ipa
-          asset_name: prod-flet-${{steps.version.outputs.version}}.ipa
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build/ipa/*.xcarchive
+          asset_name: prod-flet-${{ steps.version.outputs.version }}.ipa
           asset_content_type: application/octet-stream
