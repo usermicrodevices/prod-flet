@@ -8,12 +8,13 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+    - name: build
       run: |
           python -m venv venv
           . ./venv/bin/activate

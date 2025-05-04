@@ -8,12 +8,13 @@ on:
 
 jobs:
   build:
-    name: Build and Test default scheme using any available iPhone simulator
     runs-on: macos-latest
-
     steps:
-      - name: Checkout
-      - name: Build
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: build
         run: |
           python -m venv venv
           . ./venv/bin/activate
