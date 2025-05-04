@@ -41,6 +41,10 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             useordercustomerdialog = True
         self.use_order_customer_dialog = ft.Checkbox(label='use order customer dialog', expand=True, value=useordercustomerdialog)
         self.use_sale_customer_dialog = ft.Checkbox(label='use sale customer dialog', expand=True, value=page.client_storage.get('use_sale_customer_dialog') or False)
+        useinternalscanner = page.client_storage.get('use_internal_scanner')
+        if useinternalscanner is None:
+            useinternalscanner = True
+        self.use_internal_scanner = ft.Checkbox(label='use internal scanner', expand=True, value=useinternalscanner)
         self.content = ft.Column(controls=[
             ft.Row([self.protocol, self.port]),
             ft.Row([self.host]),
@@ -55,7 +59,8 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             ft.Row([self.scales_unit_ids]),
             ft.Row([self.search_auto_min_count, self.search_auto_limit]),
             ft.Row([self.use_order_customer_dialog]),
-            ft.Row([self.use_sale_customer_dialog])
+            ft.Row([self.use_sale_customer_dialog]),
+            ft.Row([self.use_internal_scanner])
             ]
         )
         self.actions = [
@@ -84,6 +89,7 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('search_auto_limit', self.search_auto_limit.value)
             self.page.client_storage.set('use_order_customer_dialog', self.use_order_customer_dialog.value)
             self.page.client_storage.set('use_sale_customer_dialog', self.use_sale_customer_dialog.value)
+            self.page.client_storage.set('use_internal_scanner', self.use_internal_scanner.value)
             if self.page.http_conn.http_protocol != self.protocol.value:
                 self.page.http_conn.http_protocol = self.protocol.value or 'http://'
             if self.page.http_conn.http_host != self.host.value:

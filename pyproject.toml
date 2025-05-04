@@ -1,21 +1,19 @@
 [project]
 name = "prod-flet"
-version = "1.0.5"
+version = "1.0.6"
 description = "prod client"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "flet>=0.27.6",
-  #"flet-permission-handler>=0.0.1",
-  "flet-permission-handler @ git+https://github.com/flet-dev/flet-permission-handler.git",
-  'opencv-python>=4.10.0 ; platform_system != "Android"',
-  #"zxing_cpp>=2.3.0",
   "requests>=2.32.3",
   "pyserial>=3.5",
-  #"pypdf>=5.4.0"
-  #"pillow>=10.2.0",
-  #"pyzbar>=0.1.9",
-  #"libzbar0t64>=0.23"
+  'opencv-python>=4.10.0 ; platform_system != "Android"',
+  'fletzxing @ git+https://github.com/usermicrodevices/fletzxing.git; platform_system=="Android"',
+  "flet-permission-handler @ git+https://github.com/flet-dev/flet-permission-handler.git",
+  #"flet-permission-handler>=0.0.1",
+  #"pypdf>=5.4.0",
+  #"pillow>=10.2.0"
 ]
 
 [tool.flet]
@@ -36,3 +34,8 @@ path = "src"
 
 [tool.flet.android.feature]
 "android.hardware.camera" = true
+
+[tool.fletzxing.android]
+url = "https://github.com/usermicrodevices/fletzxing.git"
+path = "src/flutter/flet_zxing"
+ref = "main"
