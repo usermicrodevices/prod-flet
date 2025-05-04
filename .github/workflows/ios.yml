@@ -11,7 +11,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: version
-        run: echo "PROD_FLET_VERSION=0.0.1" >> $GITHUB_ENV
+        run: echo "PROD_FLET_VERSION=$GITHUB_RUN_ID" >> $GITHUB_ENV
       - name: checkout
         uses: actions/checkout@v2
         with:
@@ -30,8 +30,8 @@ jobs:
         with:
           draft: false
           prerelease: false
-          release_name: $PROD_FLET_VERSION
-          tag_name: $PROD_FLET_VERSION
+          release_name: "$PROD_FLET_VERSION"
+          tag_name: "v$PROD_FLET_VERSION"
           body: "new release"
         env:
           GITHUB_TOKEN: ${{ github.token }}
