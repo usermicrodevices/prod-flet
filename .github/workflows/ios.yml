@@ -21,23 +21,27 @@ jobs:
           pip install --upgrade pip
           pip install .
           flet build ipa
+          ls build/ipa/
+      - name: version
+        run: echo "version=0.0.1" >> $GITHUB_OUTPUT
+        id: version
       - name: release
         uses: actions/create-release@v1
         id: create_release
         with:
           draft: false
           prerelease: false
-          release_name: "0.0.1"
-          tag_name: "v0.0.1"
+          release_name: ${{steps.version.outputs.version}}
+          tag_name: ${{github.ref}}
           body: "new release"
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{github.token}}
       - name: upload darwin artifact
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{github.token}}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/ipa/app-release.ipa
-          asset_name: app-release.ipa
+          upload_url: ${{steps.create_release.outputs.upload_url}}
+          asset_path: build/ipa/*.ipa
+          asset_name: prod-flet-${{steps.version.outputs.version}}.ipa
           asset_content_type: application/octet-stream

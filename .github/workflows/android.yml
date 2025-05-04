@@ -21,14 +21,17 @@ jobs:
           pip install --upgrade pip
           pip install .
           flet build apk
+    - name: version
+      run: echo "version=0.0.1" >> $GITHUB_OUTPUT
+      id: version
     - name: release
       uses: actions/create-release@v1
       id: create_release
       with:
         draft: false
         prerelease: false
-        release_name: "0.0.1"
-        tag_name: "v0.0.1"
+        release_name: ${{ steps.version.outputs.version }}
+        tag_name: ${{ github.ref }}
         body: "new release"
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -39,5 +42,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/ipa/app-release.apk
-        asset_name: app-release.apk
+        asset_name: prod-flet-${{steps.version.outputs.version}}.apk
         asset_content_type: application/octet-stream
