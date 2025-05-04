@@ -16,7 +16,7 @@ class BasketControl(ft.ExpansionPanelList):
         content_padding=0,
         input_filter=FloatNumbersOnlyInputFilter(),
         keyboard_type=ft.KeyboardType.NUMBER,
-        text_align=ft.TextAlign.RIGHT,
+        text_align=ft.TextAlign.RIGHT
     )
 
     def __init__(self, *args, **kwargs):
@@ -26,6 +26,7 @@ class BasketControl(ft.ExpansionPanelList):
             kwargs['data'] = {'customer': {'id':None, 'name':'', 'extinfo':{}}}
         elif 'customer' not in kwargs['data']:
             kwargs['data']['customer'] = {'id':None, 'name':'', 'extinfo':{}}
+        self.sum_final.on_focus = self.on_focus_sum_final
         super().__init__(*args, **kwargs)
 
     #def handle_change_expansion_panel_item(self, e: ft.ControlEvent):
@@ -87,10 +88,19 @@ class BasketControl(ft.ExpansionPanelList):
         c.data['ctrl_sum'].update()
         self.sum_final_refresh()
 
-    def on_click_delete_item(self, e: ft.ControlEvent):
-        self.controls.remove(e.control.data)
+    def on_click_delete_item(self, evt: ft.ControlEvent):
+        self.controls.remove(evt.control.data)
         self.update_status_count()
         self.update()
+
+    def on_focus_sum_final(self, evt: ft.ControlEvent):
+        self.page.is_search_bar_focused = False
+
+    def on_focus_price(self, evt: ft.ControlEvent):
+        self.page.is_search_bar_focused = False
+
+    def on_focus_count(self, evt: ft.ControlEvent):
+        self.page.is_search_bar_focused = False
 
     def add(self, product):
         item = self.search(product)
@@ -125,6 +135,7 @@ class BasketControl(ft.ExpansionPanelList):
                     keyboard_type=ft.KeyboardType.NUMBER,
                     text_align=ft.TextAlign.RIGHT,
                     on_change=self.on_change_product_price,
+                    on_focus = self.on_focus_price,
                     data = {'ctrl_sum':ctrl_sum})
             else:
                 ctrl_price = ft.Text(str_price,
@@ -141,6 +152,7 @@ class BasketControl(ft.ExpansionPanelList):
                 keyboard_type=ft.KeyboardType.NUMBER,
                 text_align=ft.TextAlign.RIGHT,
                 on_change=self.on_change_product_count,
+                on_focus = self.on_focus_count,
                 data = {'ctrl_price':ctrl_price, 'ctrl_sum':ctrl_sum})
             ctrl_price.data['ctrl_count'] = ctrl_count
             ctrl_product = ft.Text(f"{product['name']}", size=font_size)
@@ -199,3 +211,21 @@ class BasketControl(ft.ExpansionPanelList):
                 if not result:
                     logging.error(msg)
             self.clearing()
+
+    def focus_sum_final(self, index=0):
+        if self.page.is_search_bar_focused:
+            try:
+                self.sum_final.focus()
+            except Exception as e:
+                logging.error(f'{e}')
+        else:
+            self.page.bar_search_products.focus()
+
+    def focus_count(self, index=0):
+        if self.page.is_search_bar_focused and self.controls:
+            try:
+                self.controls[index].data['ctrl_count'].focus()
+            except Exception as e:
+                logging.error(f'{e}')
+        else:
+            self.page.bar_search_products.focus()
