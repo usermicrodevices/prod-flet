@@ -241,15 +241,20 @@ async def main(page: ft.Page):
             else:
                 search_close_autocompletes(evt.data, True)
 
+    page.is_search_bar_focused = True
+    def on_focus_search_bar(evt):
+        page.is_search_bar_focused = True
+
     page.bar_search_products = ft.SearchBar(bar_hint_text='Search products...',
         tooltip = 'Search products in local base',
-        on_submit=on_search,
-        on_tap=open_autocomplete,
+        on_submit = on_search,
+        on_tap = open_autocomplete,
         on_tap_outside_bar = close_autocomplete,
-        expand=3,
-        autofocus=True,
-        controls=[search_lv],
-        on_change=on_search_change
+        expand = 3,
+        autofocus = True,
+        controls = [search_lv],
+        on_change = on_search_change,
+        on_focus = on_focus_search_bar
     )
 
     page.basket = BasketControl(page=page,
@@ -411,6 +416,10 @@ async def main(page: ft.Page):
                     page.update_status_ctrl({5:f'👨{page.basket.customer}'})
                 else:
                     page.open(CustomerDialog())
+            case 'F3':
+                page.basket.focus_sum_final()
+            case 'F4':
+                page.basket.focus_count()
             case 'F5':
                 search_switch()
             case 'F11':
