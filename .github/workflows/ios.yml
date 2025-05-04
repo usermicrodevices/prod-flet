@@ -10,6 +10,8 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
+      - name: version
+        run: echo "PROD_FLET_VERSION=0.0.1" >> $GITHUB_ENV
       - name: checkout
         uses: actions/checkout@v2
         with:
@@ -21,18 +23,15 @@ jobs:
           pip install --upgrade pip
           pip install .
           flet build ipa
-          ls build/ipa/
-      - name: version
-        run: echo "version=0.0.1" >> $GITHUB_OUTPUT
-        id: version
+          ls -la build/ipa/
       - name: release
         uses: actions/create-release@v1
         id: create_release
         with:
           draft: false
           prerelease: false
-          release_name: ${{ steps.version.outputs.version }}
-          tag_name: ${{ steps.version.outputs.version }}
+          release_name: $PROD_FLET_VERSION
+          tag_name: $PROD_FLET_VERSION
           body: "new release"
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -42,6 +41,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/ipa/*.xcarchive
-          asset_name: prod-flet-${{ steps.version.outputs.version }}.ipa
+          asset_path: build/ipa/25hRunner.xcarchive
+          asset_name: prod-flet-$PROD_FLET_VERSION.ipa
           asset_content_type: application/octet-stream
