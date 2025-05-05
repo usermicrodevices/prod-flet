@@ -280,7 +280,7 @@ async def main(page: ft.Page):
                 page.run_thread(page.basket.send_data)
 
     def basket_add_product(product: dict):
-        headers, prod = page.http_conn.get_product(product['id'])
+        headers, prod = page.http_conn.get_product(product['id'], network_timeout=page.client_storage.get('network_timeout_get_product') or .1)
         product['count'] = '-' if not prod else prod['count']
         page.basket.add(product)
         search_close_autocompletes()
