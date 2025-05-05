@@ -58,12 +58,15 @@ class HttpConnector():
     def alert(self, msg: str, caption: str = 'error'):
         self.page.alert(msg, caption)
 
-    def auth(self, show_alert=False):
+    def auth(self, show_alert=False, network_timeout=10):
         self.auth_success = False
         self.page.client_storage.set('user', {})
         self.log(LD, ['🍪GET🍪', self.url_admin])
         try:
-            response = self.session.get(self.url_admin)
+            response = self.session.get(self.url_admin, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return 400
         except Exception as e:
             self.log(LE, [e])
             if show_alert:
@@ -77,7 +80,10 @@ class HttpConnector():
             self.session.headers.update(headers)
             self.log(LD, ['🍰POST🍰', self.url_loign, payload])
             try:
-                response = self.session.post(self.url_loign, data=payload)
+                response = self.session.post(self.url_loign, data=payload, timeout=network_timeout)
+            except requests.exceptions.ConnectTimeout as e:
+                self.log(LW, [e])
+                return 400
             except Exception as e:
                 self.log(LE, [e])
                 return 500
@@ -102,12 +108,15 @@ class HttpConnector():
                 self.alert(self.url_admin, 'error authorization')
         return 400
 
-    def get_products_cash(self, id_page=1, limit=100):
+    def get_products_cash(self, id_page=1, limit=100, network_timeout=10):
         data = []
         url_args = f'{self.url_products_cash}?limit={limit}&page={id_page}'
         self.log(LD, ['🎂GET🎂', url_args])
         try:
-            response = self.session.get(url_args)
+            response = self.session.get(url_args, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return {}, data
         except Exception as e:
             self.log(LE, [e])
             return {}, data
@@ -122,12 +131,15 @@ class HttpConnector():
         self.log(LD, ['🎂PRODUCTS.LENGTH🎂', len(data)])
         return response.headers, data
 
-    def get_product(self, prod_id=1):
+    def get_product(self, prod_id=1, network_timeout=10):
         data = {}
         url_args = f'{self.url_product}{prod_id}/'
         self.log(LD, ['🎂GET🎂', url_args])
         try:
-            response = self.session.get(url_args)
+            response = self.session.get(url_args, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return {}, data
         except Exception as e:
             self.log(LE, [e])
             return {}, data
@@ -136,6 +148,8 @@ class HttpConnector():
         self.log(LD, ['🎂SESSION.COOKIES🎂', self.session.cookies])
         self.log(LD, ['🎂SESSION.HEADERS🎂', self.session.headers])
         if response.status_code == 200:
+            if not response.content:
+                return {}, data
             res = eval(json.loads(response.content).replace('null', 'None'))
             if len(res):
                 data = res[0]['fields']
@@ -146,11 +160,14 @@ class HttpConnector():
         self.log(LD, ['🎂PRODUCTS.LENGTH🎂', len(data)])
         return response.headers, data
 
-    def post_doc_cash(self, data):
+    def post_doc_cash(self, data, network_timeout=10):
         json_data = json.dumps(data)
         self.log(LD, ['🎂POST🎂', self.url_doc_cash, json_data])
         try:
-            response = self.session.post(self.url_doc_cash, json_data)
+            response = self.session.post(self.url_doc_cash, json_data, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return False
         except Exception as e:
             self.log(LE, [e])
             return False
@@ -164,14 +181,17 @@ class HttpConnector():
         self.log(LD, ['🎂RESPONSE.CONTENT🎂', res])
         return True if res.get('result', 'error') == 'success' else False
 
-    def get_documents(self, id_page=0, limit=10, doctype='sale'):
+    def get_documents(self, id_page=0, limit=10, doctype='sale', network_timeout=10):
         url_args = f'{self.url_documents}?limit={limit}'
         if id_page > 0:
             url_args += f'&page={id_page}'
         url_args += f'&type__alias={doctype}'
         self.log(LD, ['🎂GET🎂', url_args])
         try:
-            response = self.session.get(url_args)
+            response = self.session.get(url_args, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return 0, [], f'{e}'
         except Exception as e:
             self.log(LE, [e])
             return 0, [], f'{e}'
@@ -190,11 +210,14 @@ class HttpConnector():
         page_max = int(response.headers.get('page_max', 0))
         return page_max, data, msg
 
-    def get_sales_receipt(self, id_doc=0, urlargs='?pdf=wkhtmltopdf'):
+    def get_sales_receipt(self, id_doc=0, urlargs='?pdf=wkhtmltopdf', network_timeout=60):
         url_args = self.url_sales_receipt % (f'{id_doc}', urlargs)
         self.log(LD, ['🎂GET🎂', url_args])
         try:
-            response = self.session.get(url_args)
+            response = self.session.get(url_args, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return '', f'{e}'
         except Exception as e:
             self.log(LE, [e])
             return '', f'{e}'
@@ -205,12 +228,15 @@ class HttpConnector():
         #return response.content.decode('utf8'), ''
         return response.content, ''
 
-    def get_customers(self, id_page=1, limit=100):
+    def get_customers(self, id_page=1, limit=100, network_timeout=10):
         data = []
         url_args = f'{self.url_customers}?limit={limit}&page={id_page}'
         self.log(LD, ['🎂GET🎂', url_args])
         try:
-            response = self.session.get(url_args)
+            response = self.session.get(url_args, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return {}, data
         except Exception as e:
             self.log(LE, [e])
             return {}, data
@@ -225,11 +251,14 @@ class HttpConnector():
         self.log(LD, ['🎂CUSTOMERS.LENGTH🎂', len(data)])
         return response.headers, data
 
-    def post_customer(self, data):
+    def post_customer(self, data, network_timeout=10):
         json_data = json.dumps(data)
         self.log(LD, ['🎂POST🎂', self.url_customers, json_data])
         try:
-            response = self.session.post(self.url_customers, json_data)
+            response = self.session.post(self.url_customers, json_data, timeout=network_timeout)
+        except requests.exceptions.ConnectTimeout as e:
+            self.log(LW, [e])
+            return False
         except Exception as e:
             self.log(LE, [e])
             return False
