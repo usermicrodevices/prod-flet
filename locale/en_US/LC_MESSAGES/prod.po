@@ -1,0 +1,50 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2025-05-11 02:01+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: pygettext.py 1.5\n"
+
+
+msgid "Version"
+msgstr ""
+
+msgid "close any dialog"
+msgstr ""
+
+msgid "this dialog"
+msgstr ""
+
+msgid "select customer"
+msgstr ""
+
+msgid "reset customer"
+msgstr ""
+
+msgid "switch between search and final sum"
+msgstr ""
+
+msgid "switch between search and count last product"
+msgstr ""
+
+msgid "switch between search and scanning"
+msgstr ""
+
+msgid "finish order customer"
+msgstr ""
+
+msgid "finish sale"
+msgstr ""
+
+msgid "version"
+msgstr ""
+

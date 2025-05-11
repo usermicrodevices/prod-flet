@@ -65,6 +65,9 @@ def sync_customers(page):
     page.sync_products_running = False
 
 def sync_sales(page):
+    if not page.db_conn:
+        logging.debug([__name__, 'DB CONNECTION EMPTY'])
+        return
     recs, msg = page.db_conn.get_grouped_records()
     if not recs:
         logging.debug(msg)

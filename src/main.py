@@ -1,4 +1,4 @@
-import asyncio, inspect, platform, os
+import asyncio, gettext, inspect, locale, os, platform
 from time import sleep
 from threading import current_thread
 
@@ -12,6 +12,7 @@ from log_tools import *
 from hardware import mer328ac
 from http_connector import HttpConnector
 from db_connector import DbConnector
+from ui.dialog_about import AboutDialog
 from ui.dialog_settings import SettingsDialog
 from ui.dialog_products import ProductsDialog
 from ui.dialog_documents import DocumentsDialog
@@ -24,6 +25,8 @@ if ft.utils.platform_utils.is_mobile() and platform.system() in ['Linux', 'Andro
 elif not ft.utils.platform_utils.is_mobile():
     from camera import CameraMaster
 
+from translation import set_locale, _
+
 
 async def main(page: ft.Page):
 
@@ -32,6 +35,12 @@ async def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.window.maximized = True
     page.theme_mode = ft.ThemeMode.LIGHT
+
+    page.directory_locale = f'locale'
+    if not os.path.isdir(page.directory_locale):
+        os.mkdir(page.directory_locale)
+    gettext.bindtextdomain('prod', page.directory_locale)
+    #page._ = gettext.Catalog('prod', page.directory_locale).gettext
 
     ph = None
     if fph:
@@ -137,6 +146,7 @@ async def main(page: ft.Page):
 
     def after_page_loaded(page):
         logging.debug('PAGE NOW IS LOADED. NEXT CHECK LOCAL DATABASE CONNECTION...')
+        set_locale(page.client_storage.get('translation_language'), locale_dir=page.directory_locale)
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
         full_products, msg = page.db_conn.get_products_count()
         update_status_ctrl({0:f'{full_products}🧷0'})#, 1:'🛒0', 2:'🗒'
@@ -166,41 +176,41 @@ async def main(page: ft.Page):
                 sync_products_interval = int(page.client_storage.get('sync_products_interval'))
             except Exception as e:
                 logging.error(e)
-            logging.debug(f'⌛⌛⌛ {self_name} {sync_products_interval} SECONDS WAIT... ⌛⌛⌛')
+            logging.debug(f'⌛♾ {self_name} {sync_products_interval} SECONDS WAIT... ♾⌛')
             sleep(sync_products_interval)
             ############################
             if page.sync_products_running:
-                logging.debug(f'⌛⌛⌛ {self_name} SYNC PRODUCTS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
+                logging.debug(f'⌛♾ {self_name} SYNC PRODUCTS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ♾⌛')
             else:
-                logging.debug(f'⏰ {self_name} RUN SYNC PRODUCTS... ⏰')
+                logging.debug(f'⌛♾⏰ {self_name} RUN SYNC PRODUCTS... ⏰♾⌛')
                 sync_products(page)
-                logging.debug(f'⌛⌛⌛ {self_name} SYNC PRODUCTS FINISHED ⌛⌛⌛')
+                logging.debug(f'⌛♾ {self_name} SYNC PRODUCTS FINISHED ♾⌛')
             ############################
             if page.sync_customers_running:
-                logging.debug(f'⌛⌛⌛ {self_name} SYNC CUSTOMERS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
+                logging.debug(f'⌛♾ {self_name} SYNC CUSTOMERS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ♾⌛')
             else:
-                logging.debug(f'⏰ {self_name} RUN SYNC CUSTOMERS... ⏰')
+                logging.debug(f'⌛♾⏰ {self_name} RUN SYNC CUSTOMERS... ⏰♾⌛')
                 sync_customers(page)
-                logging.debug(f'⌛⌛⌛ {self_name} SYNC CUSTOMERS FINISHED ⌛⌛⌛')
+                logging.debug(f'⌛♾ {self_name} SYNC CUSTOMERS FINISHED ♾⌛')
     page.run_thread(infinity_sync_cache)
 
     def infinity_sync_sales():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
-        logging.debug(f'⏰ RUN {self_name}... ⏰')
+        logging.debug(f'⌛♾⏰ RUN {self_name}... ⏰♾⌛')
         while True:
             sync_sales_interval = 300
             try:
                 sync_sales_interval = int(page.client_storage.get('sync_sales_interval'))
             except Exception as e:
                 logging.error(e)
-            logging.debug(f'⌛⌛⌛ {self_name} {sync_sales_interval} SECONDS WAIT... ⌛⌛⌛')
+            logging.debug(f'⌛♾ {self_name} {sync_sales_interval} SECONDS WAIT... ♾⌛')
             sleep(sync_sales_interval)
             if page.sync_products_running:
-                logging.debug(f'⌛⌛⌛ {self_name} SYNC SALES IS RUNNING NOW, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
+                logging.debug(f'⌛♾ {self_name} SYNC SALES IS RUNNING NOW, WAIT NEXT TIME INTERVAL ♾⌛')
             else:
-                logging.debug(f'⏰ {self_name} RUN SYNC SALES... ⏰')
+                logging.debug(f'⌛♾⏰ {self_name} RUN SYNC SALES... ⏰♾⌛')
                 sync_sales(page)
-                logging.debug(f'⌛⌛⌛ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ⌛⌛⌛')
+                logging.debug(f'⌛♾ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ♾⌛')
     page.run_thread(infinity_sync_sales)
 
     def open_autocomplete(evt):
@@ -354,6 +364,8 @@ async def main(page: ft.Page):
                 #cnt, msg = page.db_conn.clear_customers()
                 #logging.debug([msg, cnt])
         elif evt.control.selected_index == 3:
+                page.open(AboutDialog(page=page))
+        elif evt.control.selected_index == 4:
             page.client_storage.set('user', {})
             if page.platform == 'android':
                 import os
@@ -387,12 +399,12 @@ async def main(page: ft.Page):
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_COMMENT, label='➕'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.LOCK_RESET, label='🔄'),
+                ft.NavigationDrawerDestination(icon=ft.Icons.ROUNDABOUT_LEFT, label='ℹ'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.EXIT_TO_APP, label='🔚'),
             ],
         ),
         floating_action_button=ft.FloatingActionButton('SCAN', on_click=scan_barcode),
         floating_action_button_location=ft.FloatingActionButtonLocation.CENTER_DOCKED,
-        #width=400,
         height=page.window.height if page.window.height else 850
     )
     page.add(pagelet)
@@ -410,6 +422,8 @@ async def main(page: ft.Page):
             case 'Escape':
                 if alert_dlg.open:
                     page.close(alert_dlg)
+            case 'F1':
+                page.open(AboutDialog(page=page))
             case 'F2':
                 if evt.ctrl:
                     del page.basket.customer
