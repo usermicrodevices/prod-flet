@@ -1,7 +1,8 @@
-import flet as ft
+import flet as ft#, gettext, locale
 
 from log_tools import *
 from background_tasks import sync_products
+from translation import set_locale
 
 
 class SettingsDialogAction(ft.CupertinoDialogAction):
@@ -46,6 +47,7 @@ class SettingsDialog(ft.CupertinoAlertDialog):
         if useinternalscanner is None:
             useinternalscanner = True
         self.use_internal_scanner = ft.Checkbox(label='use internal scanner', expand=True, value=useinternalscanner)
+        self.translation_language = ft.TextField(label='translation language', expand=True, value=page.client_storage.get('translation_language') or locale.getlocale())
         self.content = ft.Column(controls=[
             ft.Row([self.protocol, self.port]),
             ft.Row([self.host]),
@@ -62,7 +64,8 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             ft.Row([self.search_auto_min_count, self.search_auto_limit]),
             ft.Row([self.use_order_customer_dialog]),
             ft.Row([self.use_sale_customer_dialog]),
-            ft.Row([self.use_internal_scanner])
+            ft.Row([self.use_internal_scanner]),
+            ft.Row([self.translation_language])
             ]
         )
         self.actions = [
@@ -70,8 +73,16 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             SettingsDialogAction('cancel', on_click=self.handle_action_click)
         ]
 
-    def handle_action_click(self, e):
-        if e.control.is_ok:
+    def log(self, lvl=LN, msgs=[], *args, **kwargs):
+        s = f'{LICONS[lvl]}::{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        for m in msgs:
+            s += f'::{m}'
+            if hasattr(m, '__traceback__'):
+                s += f'🇱🇮🇳🇪{m.__traceback__.tb_lineno}'
+        logging.log(lvl, s, *args, **kwargs)
+
+    def handle_action_click(self, evt):
+        if evt.control.is_ok:
             self.page.client_storage.set('protocol', self.protocol.value)
             self.page.client_storage.set('host', self.host.value)
             self.page.client_storage.set('port', self.port.value)
@@ -93,6 +104,7 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             self.page.client_storage.set('use_order_customer_dialog', self.use_order_customer_dialog.value)
             self.page.client_storage.set('use_sale_customer_dialog', self.use_sale_customer_dialog.value)
             self.page.client_storage.set('use_internal_scanner', self.use_internal_scanner.value)
+            self.page.client_storage.set('translation_language', self.translation_language.value)
             if self.page.http_conn.http_protocol != self.protocol.value:
                 self.page.http_conn.http_protocol = self.protocol.value or 'http://'
             if self.page.http_conn.http_host != self.host.value:
@@ -105,4 +117,5 @@ class SettingsDialog(ft.CupertinoAlertDialog):
                 self.page.http_conn.http_password = self.password.value
             if self.page.http_conn.auth(True) == 200:
                 self.page.run_thread(sync_products, self.page)
-        self.page.close(e.control.parent)
+            set_locale(self.translation_language.value, locale_dir=self.page.directory_locale)
+        self.page.close(evt.control.parent)
