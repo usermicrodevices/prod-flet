@@ -47,3 +47,6 @@ msgstr "завершить заказ покупателя"
 
 msgid "finish sale"
 msgstr "завершить продажу"
+
+msgid "finish order provider"
+msgstr "завершить заказ поставщику"

@@ -45,6 +45,8 @@ class CustomerDialog(flet.CupertinoAlertDialog):
             SettingsDialogAction('cancel', on_click=self.handle_action_click)
         ]
 
+        self.on_dismiss = self.on_dismiss_handler
+
     def log(self, lvl=LN, msgs=[], *args, **kwargs):
         s = f'{LICONS[lvl]}::{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
         for m in msgs:
@@ -53,17 +55,25 @@ class CustomerDialog(flet.CupertinoAlertDialog):
                 s += f'🇱🇮🇳🇪{m.__traceback__.tb_lineno}'
         logging.log(lvl, s, *args, **kwargs)
 
-    def handle_action_click(self, e):
-        if e.control.is_ok:
-            self.log(LD, ['🍪IS_OK🍪', self.customer_new.value])
-            if self.customer_new.value:
-                self.page.basket.customer = self.customer_new.value
-                if self.page.http_conn.post_customer(self.page.basket.customer):
-                    self.page.run_thread(sync_customers, self.page)
-            self.page.update_status_ctrl({5:f'👨{self.page.basket.customer}'})
-            if self.doc_type and len(self.page.basket.controls):
-                self.page.run_thread(self.page.basket.send_data, self.doc_type)
-        self.page.close(e.control.parent)
+    def on_dismiss_handler(self, evt):
+        if self.page.customer_dialog:
+            self.page.customer_dialog = None
+
+    def handle_action_click(self, evt):
+        if evt.control.is_ok:
+            self.send_data()
+        self.page.close(evt.control.parent)
+        self.page.customer_dialog = None
+
+    def send_data(self):
+        self.log(LD, ['🍪IS_OK🍪', self.customer_new.value])
+        if self.customer_new.value:
+            self.page.basket.customer = self.customer_new.value
+            if self.page.http_conn.post_customer(self.page.basket.customer, 3):
+                self.page.run_thread(sync_customers, self.page)
+        self.page.update_status_ctrl({5:f'👨{self.page.basket.customer}'})
+        if self.doc_type and len(self.page.basket.controls):
+            self.page.run_thread(self.page.basket.send_data, self.doc_type)
 
     def open_autocomplete(self, evt):
         self.search_bar.open_view()

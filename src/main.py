@@ -146,7 +146,8 @@ async def main(page: ft.Page):
 
     def after_page_loaded(page):
         logging.debug('PAGE NOW IS LOADED. NEXT CHECK LOCAL DATABASE CONNECTION...')
-        set_locale(page.client_storage.get('translation_language'), locale_dir=page.directory_locale)
+        clocale = page.client_storage.get('translation_language') or locale.getlocale()
+        set_locale(clocale, locale_dir=page.directory_locale)
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
         full_products, msg = page.db_conn.get_products_count()
         update_status_ctrl({0:f'{full_products}🧷0'})#, 1:'🛒0', 2:'🗒'
@@ -274,20 +275,35 @@ async def main(page: ft.Page):
         spacing = 0
     )
 
+    page.customer_dialog = None
+
     def basket_order_customer(evt: ft.ControlEvent = None):
         if page.client_storage.get('use_order_customer_dialog'):
-            page.open(CustomerDialog(doc_type='order_customer'))
+            if not page.customer_dialog:
+                page.customer_dialog = CustomerDialog(doc_type='order_customer')
+            if page.customer_dialog and not page.customer_dialog.open:
+                page.open(page.customer_dialog)
         else:
             if len(page.basket.controls):
                 page.run_thread(page.basket.send_data, 'order_customer')
-        #logging.debug(f'🚗BASKET_ORDER_CUSTOMER; PRODUCTS-COUNT={len(page.basket.controls)}')
 
     def basket_sale(evt: ft.ControlEvent = None):
         if page.client_storage.get('use_sale_customer_dialog'):
-            page.open(CustomerDialog(doc_type='sale'))
+            if not page.customer_dialog:
+                page.customer_dialog = CustomerDialog(doc_type='sale')
+            if page.customer_dialog and not page.customer_dialog.open:
+                page.open(page.customer_dialog)
         else:
             if len(page.basket.controls):
                 page.run_thread(page.basket.send_data)
+
+    def basket_order(evt: ft.ControlEvent = None):
+        if page.customer_dialog:
+            if page.customer_dialog.open:
+                page.close(page.customer_dialog)
+            page.customer_dialog = None
+        if len(page.basket.controls):
+            page.run_thread(page.basket.send_data, 'order')
 
     def basket_add_product(product: dict):
         headers, prod = page.http_conn.get_product(product['id'], network_timeout=page.client_storage.get('network_timeout_get_product') or .1)
@@ -422,20 +438,36 @@ async def main(page: ft.Page):
             case 'Escape':
                 if alert_dlg.open:
                     page.close(alert_dlg)
+                if page.customer_dialog:
+                    page.customer_dialog = None
+            case 'Enter':
+                if page.customer_dialog:
+                    page.customer_dialog.send_data()
+                    page.close(page.customer_dialog)
+                    page.customer_dialog = None
             case 'F1':
                 page.open(AboutDialog(page=page))
             case 'F2':
                 if evt.ctrl:
                     del page.basket.customer
                     page.update_status_ctrl({5:f'👨{page.basket.customer}'})
+                    if page.customer_dialog:
+                        if page.customer_dialog.open:
+                            page.close(page.customer_dialog)
+                        page.customer_dialog = None
                 else:
-                    page.open(CustomerDialog())
+                    if not page.customer_dialog:
+                        page.customer_dialog = CustomerDialog()
+                    if page.customer_dialog and not page.customer_dialog.open:
+                        page.open(page.customer_dialog)
             case 'F3':
                 page.basket.focus_sum_final()
             case 'F4':
                 page.basket.focus_count()
             case 'F5':
                 search_switch()
+            case 'F10':
+                basket_order()
             case 'F11':
                 basket_order_customer()
             case 'F12':

@@ -1,4 +1,4 @@
-import gettext, locale, logging, os
+import gettext, locale, logging, os, re
 
 global gettext_catalog
 gettext_catalog = None
@@ -11,6 +11,14 @@ def set_locale(current_locale=None, encoding=None, locale_dir='locale'):
         encoding = locale.getencoding()
     if current_locale is None:
         current_locale = locale.getlocale()
+    if isinstance(current_locale, (list, tuple)):
+        current_locale, encoding = current_locale
+    else:
+        res = re.match(r"\('(\S+)', '(\S+)'\)", current_locale) or re.match(r"\['(\S+)', '(\S+)'\]", current_locale)
+        if res:
+            grps = res.groups()
+            if len(grps) == 2:
+                current_locale, encoding = grps
     new_locale = f'{current_locale}.{encoding}' if current_locale else ''
     try:
         locale.setlocale(locale.LC_ALL, new_locale)
