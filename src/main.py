@@ -30,6 +30,7 @@ from translation import set_locale, _
 
 async def main(page: ft.Page):
 
+    page.version = '1.0.7'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -145,7 +146,7 @@ async def main(page: ft.Page):
     page.sync_customers_running = False
 
     def after_page_loaded(page):
-        logging.debug('PAGE NOW IS LOADED. NEXT CHECK LOCAL DATABASE CONNECTION...')
+        logging.debug(f'PAGE NOW IS LOADED {page.locale_configuration}. NEXT CHECK LOCAL DATABASE CONNECTION...')
         clocale = page.client_storage.get('translation_language') or locale.getlocale()
         set_locale(clocale, locale_dir=page.directory_locale)
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
@@ -474,5 +475,7 @@ async def main(page: ft.Page):
                 basket_sale()
     page.on_keyboard_event = on_keyboard
 
+    page.locale_configuration = ft.LocaleConfiguration([ft.Locale(language_code='en', country_code='US'), ft.Locale(language_code='ru', country_code='RU')])
 
-ft.app(main)#, port=9000
+
+ft.app(main, use_color_emoji=True)#, port=9000

@@ -2,7 +2,7 @@ import flet as ft
 from log_tools import *
 from translation import _
 
-
+global VERSION
 VERSION = ''
 try:
     import tomllib
@@ -20,8 +20,11 @@ else:
 
 class AboutDialog(ft.AlertDialog):
     def __init__(self, *args, **kwargs):
+        global VERSION
         page = kwargs.pop('page')
         super().__init__(*args, **kwargs)
+        if not VERSION:
+            VERSION = page.version
         CONTENT = f'''{_("Version")} {VERSION}\n''' + \
             f'''Esc - {_("close any dialog")}\n''' + \
             f'''F1 - {_("this dialog")}\n''' + \
