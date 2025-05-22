@@ -30,7 +30,7 @@ from translation import set_locale, _
 
 async def main(page: ft.Page):
 
-    page.version = '1.0.7'
+    page.version = '1.0.8'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -398,6 +398,7 @@ async def main(page: ft.Page):
         #trailing=ft.Icon(ft.icons.WB_SUNNY_OUTLINED),
         middle=ft.Row([
             page.bar_search_products,
+            ft.IconButton(icon=ft.Icons.LOCAL_SHIPPING, on_click=basket_order),
             ft.IconButton(icon=ft.Icons.SHOPPING_BASKET, on_click=basket_order_customer),
             page.basket.sum_final,
             ft.IconButton(icon=ft.Icons.POINT_OF_SALE, on_click=basket_sale)

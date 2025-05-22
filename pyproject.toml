@@ -1,6 +1,6 @@
 [project]
 name = "prod-flet"
-version = "1.0.7"
+version = "1.0.8"
 description = "prod client"
 readme = "README.md"
 requires-python = ">=3.12"
