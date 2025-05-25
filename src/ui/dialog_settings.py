@@ -5,6 +5,11 @@ from background_tasks import sync_products
 from translation import set_locale
 
 
+class FloatNumbersOnlyInputFilter(ft.InputFilter):
+    def __init__(self):
+        super().__init__(regex_string=r"^[0-9]*\.[0-9]{0,3}$")
+
+
 class SettingsDialogAction(ft.CupertinoDialogAction):
     def __init__(self, *args, **kwargs):
         self.is_ok = kwargs.pop('is_ok', False)
@@ -25,7 +30,7 @@ class SettingsDialog(ft.CupertinoAlertDialog):
         self.port = ft.TextField(hint_text='port', label='port', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('port'))
         self.login = ft.TextField(hint_text='login', label='login', expand=True, value=page.client_storage.get('login'))
         self.password = ft.TextField(hint_text='password', label='password', password=True, can_reveal_password=True, expand=True, value=page.client_storage.get('password'))
-        self.network_timeout_get_product = ft.TextField(hint_text='0.1', label='timeout get product seconds', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('network_timeout_get_product') or .1)
+        self.network_timeout_get_product = ft.TextField(hint_text='0.1', label='timeout get product seconds', input_filter=FloatNumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('network_timeout_get_product') or .1)
         self.db_file_name = ft.TextField(hint_text='db file name', label='db file name', expand=True, value=page.client_storage.get('db_file_name') or 'prod.db')
         self.sync_products_interval = ft.TextField(hint_text='seconds', label='sync products interval', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('sync_products_interval') or '7200')
         self.sync_sales_interval = ft.TextField(hint_text='seconds', label='sync sales interval', input_filter=ft.NumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, expand=True, value=page.client_storage.get('sync_sales_interval') or '300')
