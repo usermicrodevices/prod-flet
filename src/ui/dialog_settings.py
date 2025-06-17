@@ -77,6 +77,7 @@ class SettingsDialog(ft.CupertinoAlertDialog):
             SettingsDialogAction('save', is_ok=True, on_click=self.handle_action_click),
             SettingsDialogAction('cancel', on_click=self.handle_action_click)
         ]
+        self.page = page
 
     def log(self, lvl=LN, msgs=[], *args, **kwargs):
         s = f'{LICONS[lvl]}::{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
@@ -122,5 +123,8 @@ class SettingsDialog(ft.CupertinoAlertDialog):
                 self.page.http_conn.http_password = self.password.value
             if self.page.http_conn.auth(True) == 200:
                 self.page.run_thread(sync_products, self.page)
-            set_locale(self.translation_language.value, locale_dir=self.page.directory_locale)
+            try:
+                set_locale(self.translation_language.value, locale_dir=self.page.directory_locale)
+            except Exception as e:
+                self.log(LE, [e])
         self.page.close(evt.control.parent)

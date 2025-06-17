@@ -30,7 +30,7 @@ from translation import set_locale, _
 
 async def main(page: ft.Page):
 
-    page.version = '1.0.8'
+    page.version = '1.0.9'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -148,7 +148,11 @@ async def main(page: ft.Page):
     def after_page_loaded(page):
         logging.debug(f'PAGE NOW IS LOADED {page.locale_configuration}. NEXT CHECK LOCAL DATABASE CONNECTION...')
         clocale = page.client_storage.get('translation_language') or locale.getlocale()
-        set_locale(clocale, locale_dir=page.directory_locale)
+        try:
+            set_locale(clocale, locale_dir=page.directory_locale)
+        except Exception as e:
+            logging.error(e)
+            #page.alert(f'{e}')
         page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
         full_products, msg = page.db_conn.get_products_count()
         update_status_ctrl({0:f'{full_products}🧷0'})#, 1:'🛒0', 2:'🗒'
@@ -306,6 +310,7 @@ async def main(page: ft.Page):
         if len(page.basket.controls):
             page.run_thread(page.basket.send_data, 'order')
 
+
     def basket_add_product(product: dict):
         headers, prod = page.http_conn.get_product(product['id'], network_timeout=page.client_storage.get('network_timeout_get_product') or .1)
         product['count'] = '-' if not prod else prod['count']
@@ -370,19 +375,21 @@ async def main(page: ft.Page):
     def handle_change_navigation_drawer(evt: ft.ControlEvent):
         logging.debug(f'CHANGED {evt.control.selected_index}')
         if evt.control.selected_index == 0:
-            page.open(SettingsDialog(page=page))
+            basket_order()
         elif evt.control.selected_index == 1:
-            page.open(ProductsDialog(page=page))
+            page.open(SettingsDialog(page=page))
         elif evt.control.selected_index == 2:
+            page.open(ProductsDialog(page=page))
+        elif evt.control.selected_index == 3:
             if not page.sync_products_running:
                 cnt, msg = page.db_conn.clear_products()
                 logging.debug([msg, cnt])
                 page.run_thread(sync_products, page)
                 #cnt, msg = page.db_conn.clear_customers()
                 #logging.debug([msg, cnt])
-        elif evt.control.selected_index == 3:
-                page.open(AboutDialog(page=page))
         elif evt.control.selected_index == 4:
+                page.open(AboutDialog(page=page))
+        elif evt.control.selected_index == 5:
             page.client_storage.set('user', {})
             if page.platform == 'android':
                 import os
@@ -398,7 +405,7 @@ async def main(page: ft.Page):
         #trailing=ft.Icon(ft.icons.WB_SUNNY_OUTLINED),
         middle=ft.Row([
             page.bar_search_products,
-            ft.IconButton(icon=ft.Icons.LOCAL_SHIPPING, on_click=basket_order),
+            #ft.IconButton(icon=ft.Icons.LOCAL_SHIPPING, on_click=basket_order),
             ft.IconButton(icon=ft.Icons.SHOPPING_BASKET, on_click=basket_order_customer),
             page.basket.sum_final,
             ft.IconButton(icon=ft.Icons.POINT_OF_SALE, on_click=basket_sale)
@@ -414,6 +421,7 @@ async def main(page: ft.Page):
             on_dismiss=handle_dismiss_navigation_drawer,
             on_change=handle_change_navigation_drawer,
             controls=[
+                ft.NavigationDrawerDestination(icon=ft.Icons.LOCAL_SHIPPING, label=''),
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_COMMENT, label='➕'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.LOCK_RESET, label='🔄'),
