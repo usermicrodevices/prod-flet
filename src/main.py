@@ -421,7 +421,7 @@ async def main(page: ft.Page):
             on_dismiss=handle_dismiss_navigation_drawer,
             on_change=handle_change_navigation_drawer,
             controls=[
-                ft.NavigationDrawerDestination(icon=ft.Icons.LOCAL_SHIPPING, label=''),
+                ft.NavigationDrawerDestination(icon=ft.Icons.LOCAL_SHIPPING, label='🚚'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.ADD_COMMENT, label='➕'),
                 ft.NavigationDrawerDestination(icon=ft.Icons.LOCK_RESET, label='🔄'),
