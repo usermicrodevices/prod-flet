@@ -1,8 +1,8 @@
 import flet as ft
 
-import logging
-
 from datetime import datetime
+
+from log_tools import *
 
 
 class FloatNumbersOnlyInputFilter(ft.InputFilter):
@@ -29,8 +29,16 @@ class BasketControl(ft.ExpansionPanelList):
         self.sum_final.on_focus = self.on_focus_sum_final
         super().__init__(*args, **kwargs)
 
-    #def handle_change_expansion_panel_item(self, e: ft.ControlEvent):
-        #logging.debug(f'{e.data}; {e.control}')
+    def log(self, lvl=LN, msgs=[], *args, **kwargs):
+        s = f'{LICONS[lvl]}::{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+        for m in msgs:
+            s += f'::{m}'
+            if hasattr(m, '__traceback__'):
+                s += f'🇱🇮🇳🇪{m.__traceback__.tb_lineno}'
+        logging.log(lvl, s, *args, **kwargs)
+
+    #def handle_change_expansion_panel_item(self, evt: ft.ControlEvent):
+        #self.log(LD, [evt.data, evt.control])
 
     @property
     def customer(self):
@@ -73,7 +81,7 @@ class BasketControl(ft.ExpansionPanelList):
         return None
 
     def on_change_product_count(self, evt: ft.ControlEvent):
-        logging.debug(['CHANGE_BASKET_COUNT', evt.control.value, evt.data])
+        self.log(LD, ['CHANGE_BASKET_COUNT', evt.control.value, evt.data])
         c = evt.control
         sum_product = round(float(c.value) * float(c.data['ctrl_price'].value), 2)
         c.data['ctrl_sum'].value = f'{sum_product}'
@@ -81,7 +89,7 @@ class BasketControl(ft.ExpansionPanelList):
         self.sum_final_refresh()
 
     def on_change_product_price(self, evt: ft.ControlEvent):
-        logging.debug(['CHANGE_BASKET_PRICE', evt.control.value, evt.data])
+        self.log(LD, ['CHANGE_BASKET_PRICE', evt.control.value, evt.data])
         c = evt.control
         sum_product = round(float(c.value) * float(c.data['ctrl_count'].value), 2)
         c.data['ctrl_sum'].value = f'{sum_product}'
@@ -179,7 +187,7 @@ class BasketControl(ft.ExpansionPanelList):
             self.update_status_count(False)
         self.sum_final_refresh()
         self.page.update()
-        logging.debug(f'ADD_PRODUCT: {product}')
+        self.log(LD, ['ADD_PRODUCT: ', product])
 
     def send_data(self, data_type: str = 'sale'):
         if not self.controls:
@@ -195,9 +203,9 @@ class BasketControl(ft.ExpansionPanelList):
             sended = False
             if self.page.http_conn.auth_success:
                 sended = self.page.http_conn.post_doc_cash(data)
-                logging.debug(['SALE FINISH SEND TO SERVER', sended])
+                self.log(LD, ['SALE FINISH SEND TO SERVER', sended])
             if not sended:
-                logging.debug('SAVE SALE TO LOCAL DB...')
+                self.log(LD, ['SAVE SALE TO LOCAL DB...'])
                 local_records = []
                 for r in records:
                     r['sum_final'] = data['sum_final']
@@ -207,9 +215,9 @@ class BasketControl(ft.ExpansionPanelList):
                     r['customer'] = data['customer']
                     local_records.append(r)
                 result, msg = self.page.db_conn.insert_records(local_records)
-                logging.debug(['SAVE SALE TO LOCAL DB FINISH', result, msg])
+                self.log(LD, ['SAVE SALE TO LOCAL DB FINISH', result, msg])
                 if not result:
-                    logging.error(msg)
+                    self.log(LW, [msg])
             self.clearing()
 
     def focus_sum_final(self, index=0):
@@ -217,7 +225,7 @@ class BasketControl(ft.ExpansionPanelList):
             try:
                 self.sum_final.focus()
             except Exception as e:
-                logging.error(f'{e}')
+                self.log(LE, [e])
         else:
             self.page.bar_search_products.focus()
 
@@ -226,6 +234,6 @@ class BasketControl(ft.ExpansionPanelList):
             try:
                 self.controls[index].data['ctrl_count'].focus()
             except Exception as e:
-                logging.error(f'{e}')
+                self.log(LE, [e])
         else:
             self.page.bar_search_products.focus()
