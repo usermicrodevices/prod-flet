@@ -30,7 +30,7 @@ from translation import set_locale, _
 
 async def main(page: ft.Page):
 
-    page.version = '1.0.9'
+    page.version = '1.1.0'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -58,12 +58,14 @@ async def main(page: ft.Page):
     size_status_text = 45
     if ft.utils.platform_utils.is_mobile():
         size_status_text = 14
-    page.status_ctrl = ft.Row([ft.Text(size=size_status_text),
-                               ft.Text(size=size_status_text, value='🛒0'),
-                               ft.Text(size=size_status_text, value='🗒'),
-                               ft.Text(size=size_status_text, value='📴'),
-                               ft.Text(size=size_status_text, value='💬'),
-                               ft.Text(size=size_status_text, value='👨')])
+    ctrls = [
+        ft.Text(size=size_status_text),
+        ft.Text(size=size_status_text, value='🛒0'),
+        ft.Text(size=size_status_text, value='🗒'),
+        ft.Text(size=size_status_text, value='📴'),
+        ft.Text(size=size_status_text, value='💬'),
+        ft.Text(size=size_status_text, value='👨')]
+    page.status_ctrl = ft.GridView(controls=ctrls, max_extent=size_status_text*3)
 
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
