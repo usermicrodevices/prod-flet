@@ -1,4 +1,4 @@
-import flet as ft, locale
+import flet as ft, locale, sys
 
 from log_tools import *
 from background_tasks import sync_products
