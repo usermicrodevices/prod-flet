@@ -312,7 +312,6 @@ async def main(page: ft.Page):
         if len(page.basket.controls):
             page.run_thread(page.basket.send_data, 'order')
 
-
     def basket_add_product(product: dict):
         headers, prod = page.http_conn.get_product(product['id'], network_timeout=page.client_storage.get('network_timeout_get_product') or .1)
         product['count'] = '-' if not prod else prod['count']
@@ -457,6 +456,9 @@ async def main(page: ft.Page):
                     page.customer_dialog.send_data()
                     page.close(page.customer_dialog)
                     page.customer_dialog = None
+            case 'Delete':
+                if evt.ctrl:
+                    page.basket.clearing()
             case 'F1':
                 page.open(AboutDialog(page=page))
             case 'F2':

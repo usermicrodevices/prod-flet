@@ -50,3 +50,6 @@ msgstr "завершить продажу"
 
 msgid "finish order provider"
 msgstr "завершить заказ поставщику"
+
+msgid "clear products from basket"
+msgstr "удалить товары из корзинки"
