@@ -36,6 +36,7 @@ class AboutDialog(ft.AlertDialog):
             f'''F10 - {_("finish order provider")}\n''' + \
             f'''F11 - {_("finish order customer")}\n''' + \
             f'''F12 - {_("finish sale")}\n''' + \
+            f'''Ctrl+DEL - {_("clear products from basket")}\n''' + \
             f'''(flet {_("version")} {ft.version.version})'''
 
         self.content = ft.Text(CONTENT)
