@@ -98,6 +98,7 @@ class BasketControl(ft.ExpansionPanelList):
 
     def on_click_delete_item(self, evt: ft.ControlEvent):
         self.controls.remove(evt.control.data)
+        self.sum_final_refresh()
         self.update_status_count()
         self.update()
 
