@@ -30,7 +30,7 @@ from translation import set_locale, _
 
 async def main(page: ft.Page):
 
-    page.version = '1.1.0'
+    page.version = '1.1.1'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
