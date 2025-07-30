@@ -5,19 +5,19 @@ description = "prod client"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "flet>=0.28.0",
+  "flet>=0.28.3",
   "requests>=2.32.3",
   "pyserial>=3.5",
-  'opencv-python>=4.10.0 ; platform_system != "Android"',
+  #'opencv-python>=4.10.0 ; platform_system != "Android"',
   'fletzxing @ git+https://github.com/usermicrodevices/fletzxing.git; platform_system=="Android"',
-  "flet-permission-handler @ git+https://github.com/flet-dev/flet-permission-handler.git",
-  #"flet-permission-handler>=0.0.1",
+  #"flet-permission-handler @ git+https://github.com/flet-dev/flet-permission-handler.git",
+  "flet-permission-handler>=0.0.1",
   #"pypdf>=5.4.0",
   #"pillow>=10.2.0"
 ]
 
 [tool.flet]
-ndk.dir="~/Android/Sdk/ndk/25.1.8937393"
+ndk.dir="~/Android/Sdk/ndk/28.0.13004108"
 sdk.dir="~/Android/Sdk"
 
 org = "com.github.usermicrodevices"
