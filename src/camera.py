@@ -1,7 +1,11 @@
 import base64, io, logging, threading
 
 import flet as ft
-import cv2#pip install opencv-python
+try:
+    #pip install opencv-python
+    import cv2
+except:
+    pass
 #from PIL import Image#pip install pillow
 #from pyzbar import pyzbar#pip install pyzbar # but it required C-extension libzbar and not build with mobile platforms
 #from third_party.pyzbar import pyzbar#fixed version with C-extensions included
@@ -38,7 +42,9 @@ class CameraMaster(ft.Image):
         if camera_index is None:
             logging.debug('‼⚠ No available camera found. ⚠‼')
         else:# Initialize the camera
-            self.cap = cv2.VideoCapture(camera_index)
+            try:
+                self.cap = cv2.VideoCapture(camera_index)
+            except: pass
 
         # Event to control the update loop
         self.stop_event = threading.Event()

@@ -4,23 +4,27 @@ from datetime import datetime
 
 from log_tools import *
 
+use_custom_decimal_ctrl = True
+try:
+    from flet_decimal_input import FletDecimalInput
+except:
+    use_custom_decimal_ctrl = False
+
 
 class FloatNumbersOnlyInputFilter(ft.InputFilter):
     def __init__(self):
         super().__init__(regex_string=r"^[0-9]*\.[0-9]{0,3}$")
+        #super().__init__(regex_string=r"(^\\d*.?\\d{0,3}$)")
 
 
 class BasketControl(ft.ExpansionPanelList):
 
-    sum_final = ft.TextField('0.0', expand=1,
-        content_padding=0,
-        input_filter=FloatNumbersOnlyInputFilter(),
-        keyboard_type=ft.KeyboardType.NUMBER,
-        text_align=ft.TextAlign.RIGHT
-    )
+    sum_final = ft.TextField('0.0', expand=1, content_padding=0, input_filter=FloatNumbersOnlyInputFilter(), keyboard_type=ft.KeyboardType.NUMBER, text_align=ft.TextAlign.RIGHT)
+    if use_custom_decimal_ctrl:
+        sum_final = FletDecimalInput(value=0.0, expand=1, content_padding=0, text_align=ft.TextAlign.RIGHT)
 
     def __init__(self, *args, **kwargs):
-        self.page = kwargs.pop('page')
+        #self.page = kwargs.pop('page')
         #kwargs['on_change'] = self.handle_change_expansion_panel_item
         if 'data' not in kwargs:
             kwargs['data'] = {'customer': {'id':None, 'name':'', 'extinfo':{}}}
@@ -128,7 +132,7 @@ class BasketControl(ft.ExpansionPanelList):
             sum_product = round(count * price, 2)
             item.data['ctrl_sum'].value = f'{sum_product}'
         else:
-            font_size = int(self.page.client_storage.get('basket_font_size'))
+            font_size = int(ft.SharedPreferences().get('basket_font_size') or 16)
             ctrl_count_from_server = ft.Text(product.get('count', '-'), text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
             str_price = f'{product['price']:.2f}'#.strip('0').strip('.')
             if not str_price:

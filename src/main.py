@@ -30,6 +30,8 @@ from translation import set_locale, _
 
 async def main(page: ft.Page):
 
+    shared_preferences = ft.SharedPreferences()
+
     page.version = '1.1.1'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
@@ -75,8 +77,8 @@ async def main(page: ft.Page):
                 page.status_ctrl.update()
     page.update_status_ctrl = update_status_ctrl
 
-    def is_superuser():
-        return page.client_storage.get('user').get('is_superuser', False)
+    async def is_superuser():
+        return await shared_preferences.get('user').get('is_superuser', False)
     page.is_superuser = is_superuser
 
     page.scan_img = None
@@ -105,8 +107,8 @@ async def main(page: ft.Page):
             page.bar_search_products.update()
             update_status_ctrl({4:'💬'})
 
-    def scan_barcode(evt: ft.ControlEvent):
-        if page.client_storage.get('use_internal_scanner'):
+    async def scan_barcode(evt: ft.ControlEvent):
+        if await shared_preferences.get('use_internal_scanner'):
             ismobile = ft.utils.platform_utils.is_mobile()
             if ismobile and fph and ph:
                 if not ph.check_permission(fph.PermissionType.CAMERA, 5):
@@ -147,25 +149,26 @@ async def main(page: ft.Page):
     page.sync_products_running = False
     page.sync_customers_running = False
 
-    def after_page_loaded(page):
+    async def after_page_loaded(page):
         logging.debug(f'PAGE NOW IS LOADED {page.locale_configuration}. NEXT CHECK LOCAL DATABASE CONNECTION...')
-        clocale = page.client_storage.get('translation_language') or locale.getlocale()
+        #clocale = await shared_preferences.get('translation_language') or locale.getlocale()
+        clocale = page.locale_configuration or locale.getlocale()
         try:
             set_locale(clocale, locale_dir=page.directory_locale)
         except Exception as e:
             logging.error(e)
             #page.alert(f'{e}')
-        page.db_conn = DbConnector(file_name=page.client_storage.get('db_file_name') or 'prod.db')
+        page.db_conn = DbConnector(file_name=await shared_preferences.get('db_file_name') or 'prod.db')
         full_products, msg = page.db_conn.get_products_count()
         update_status_ctrl({0:f'{full_products}🧷0'})#, 1:'🛒0', 2:'🗒'
         logging.debug('CHECK ACCESSIBLE RETAIL HARDWARE...')
-        page.scales = mer328ac.pos2m(page.client_storage.get('scales_port') or '/dev/ttyUSB0', int(page.client_storage.get('scales_baud') or 9600), timeout=float(page.client_storage.get('scales_timeout') or 0.5), delay_requests=float(page.client_storage.get('scales_wait_read') or 0.5), weight_ratio=int(page.client_storage.get('scales_ratio') or 1000), start_infinity_read=True, exclusive=True)
+        page.scales = mer328ac.pos2m(await shared_preferences.get('scales_port') or '/dev/ttyUSB0', int(await shared_preferences.get('scales_baud') or 9600), timeout=float(await shared_preferences.get('scales_timeout') or 0.5), delay_requests=float(await shared_preferences.get('scales_wait_read') or 0.5), weight_ratio=int(await shared_preferences.get('scales_ratio') or 1000), start_infinity_read=True, exclusive=True)
         if page.scales.device:
             update_status_ctrl({2:'🖥⚖'})
-        scales_unit_ids = page.client_storage.get('scales_unit_ids')
+        scales_unit_ids = await shared_preferences.get('scales_unit_ids')
         if scales_unit_ids:
             try:
-                page.scales_unit_ids = [int(uid) for uid in page.client_storage.get('scales_unit_ids').split(',')]
+                page.scales_unit_ids = [int(uid) for uid in await shared_preferences.get('scales_unit_ids').split(',')]
             except Exception as e:
                 logging.error(e)
         logging.debug('CHECK REMOTE NETWORK CONNECTION...')
@@ -173,15 +176,15 @@ async def main(page: ft.Page):
         status_code = page.http_conn.auth(show_alert=True)
         sync_products(page)
         sync_customers(page)
-    page.run_thread(after_page_loaded, page)
+    page.run_task(after_page_loaded, page)
 
-    def infinity_sync_cache():
+    async def infinity_sync_cache():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⏰ RUN {self_name}... ⏰')
         while True:
             sync_products_interval = 7200
             try:
-                sync_products_interval = int(page.client_storage.get('sync_products_interval'))
+                sync_products_interval = int(await shared_preferences.get('sync_products_interval'))
             except Exception as e:
                 logging.error(e)
             logging.debug(f'⌛♾ {self_name} {sync_products_interval} SECONDS WAIT... ♾⌛')
@@ -200,15 +203,15 @@ async def main(page: ft.Page):
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC CUSTOMERS... ⏰♾⌛')
                 sync_customers(page)
                 logging.debug(f'⌛♾ {self_name} SYNC CUSTOMERS FINISHED ♾⌛')
-    page.run_thread(infinity_sync_cache)
+    page.run_task(infinity_sync_cache)
 
-    def infinity_sync_sales():
+    async def infinity_sync_sales():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⌛♾⏰ RUN {self_name}... ⏰♾⌛')
         while True:
             sync_sales_interval = 300
             try:
-                sync_sales_interval = int(page.client_storage.get('sync_sales_interval'))
+                sync_sales_interval = int(await shared_preferences.get('sync_sales_interval'))
             except Exception as e:
                 logging.error(e)
             logging.debug(f'⌛♾ {self_name} {sync_sales_interval} SECONDS WAIT... ♾⌛')
@@ -219,7 +222,7 @@ async def main(page: ft.Page):
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC SALES... ⏰♾⌛')
                 sync_sales(page)
                 logging.debug(f'⌛♾ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ♾⌛')
-    page.run_thread(infinity_sync_sales)
+    page.run_task(infinity_sync_sales)
 
     def open_autocomplete(evt):
         page.bar_search_products.open_view()
@@ -246,11 +249,11 @@ async def main(page: ft.Page):
             update_status_ctrl({4:'💬'})
             page.bar_search_products.update()
 
-    def on_search_change(evt):
-        if len(evt.data) < (page.client_storage.get('search_auto_min_count') or 2):
+    async def on_search_change(evt):
+        if len(evt.data) < (await shared_preferences.get('search_auto_min_count') or 2):
             search_close_autocompletes(evt.data)
         else:
-            products, msg = page.db_conn.search_products(evt.data, limit_expression=f' LIMIT {page.client_storage.get('search_auto_limit') or 1000}')
+            products, msg = page.db_conn.search_products(evt.data, limit_expression=f' LIMIT {await shared_preferences.get('search_auto_limit') or 1000}')
             if products:
                 update_status_ctrl({4:f'💬{len(products)}'})
                 search_lv.controls = [ft.ListTile(title=ft.Text(product['name']), on_click=lambda evt: basket_add_product(evt.control.data), data=product) for product in products]
@@ -275,7 +278,7 @@ async def main(page: ft.Page):
         on_focus = on_focus_search_bar
     )
 
-    page.basket = BasketControl(page=page,
+    page.basket = BasketControl(#page=page,
         expand_icon_color = ft.Colors.GREEN,
         elevation = 4,
         divider_color=ft.Colors.GREEN,
@@ -284,8 +287,8 @@ async def main(page: ft.Page):
 
     page.customer_dialog = None
 
-    def basket_order_customer(evt: ft.ControlEvent = None):
-        if page.client_storage.get('use_order_customer_dialog'):
+    async def basket_order_customer(evt: ft.ControlEvent = None):
+        if await shared_preferences.get('use_order_customer_dialog'):
             if not page.customer_dialog:
                 page.customer_dialog = CustomerDialog(doc_type='order_customer')
             if page.customer_dialog and not page.customer_dialog.open:
@@ -294,8 +297,8 @@ async def main(page: ft.Page):
             if len(page.basket.controls):
                 page.run_thread(page.basket.send_data, 'order_customer')
 
-    def basket_sale(evt: ft.ControlEvent = None):
-        if page.client_storage.get('use_sale_customer_dialog'):
+    async def basket_sale(evt: ft.ControlEvent = None):
+        if await shared_preferences.get('use_sale_customer_dialog'):
             if not page.customer_dialog:
                 page.customer_dialog = CustomerDialog(doc_type='sale')
             if page.customer_dialog and not page.customer_dialog.open:
@@ -312,8 +315,8 @@ async def main(page: ft.Page):
         if len(page.basket.controls):
             page.run_thread(page.basket.send_data, 'order')
 
-    def basket_add_product(product: dict):
-        headers, prod = page.http_conn.get_product(product['id'], network_timeout=page.client_storage.get('network_timeout_get_product') or .1)
+    async def basket_add_product(product: dict):
+        headers, prod = page.http_conn.get_product(product['id'], network_timeout=await shared_preferences.get('network_timeout_get_product') or .1)
         product['count'] = '-' if not prod else prod['count']
         page.basket.add(product)
         search_close_autocompletes()
@@ -344,10 +347,10 @@ async def main(page: ft.Page):
         page.update()
 
     def open_poducts(evt: ft.ControlEvent):
-        page.open(ProductsDialog(page=page))
+        page.open(ProductsDialog())
 
     def open_documents(evt: ft.ControlEvent):
-        page.open(DocumentsDialog(page=page))
+        page.open(DocumentsDialog())
 
     def basket_clear(evt: ft.ControlEvent):
         page.basket.clearing()
@@ -362,7 +365,7 @@ async def main(page: ft.Page):
         ]
     )
 
-    bottomappbar = ft.BottomAppBar(bottomappbar_content, bgcolor=ft.Colors.GREEN, shape=ft.NotchShape.CIRCULAR)
+    bottomappbar = ft.BottomAppBar(bottomappbar_content, bgcolor=ft.Colors.GREEN)#, shape=ft.NotchShape.CIRCULAR)
 
     content_panel = ft.ListView(controls=[page.basket])
 
@@ -373,14 +376,14 @@ async def main(page: ft.Page):
         pagelet.appbar = topbar
         page.update()
 
-    def handle_change_navigation_drawer(evt: ft.ControlEvent):
+    async def handle_change_navigation_drawer(evt: ft.ControlEvent):
         logging.debug(f'CHANGED {evt.control.selected_index}')
         if evt.control.selected_index == 0:
             basket_order()
         elif evt.control.selected_index == 1:
-            page.open(SettingsDialog(page=page))
+            page.open(SettingsDialog())
         elif evt.control.selected_index == 2:
-            page.open(ProductsDialog(page=page))
+            page.open(ProductsDialog())
         elif evt.control.selected_index == 3:
             if not page.sync_products_running:
                 cnt, msg = page.db_conn.clear_products()
@@ -389,9 +392,9 @@ async def main(page: ft.Page):
                 #cnt, msg = page.db_conn.clear_customers()
                 #logging.debug([msg, cnt])
         elif evt.control.selected_index == 4:
-                page.open(AboutDialog(page=page))
+                page.open(AboutDialog())
         elif evt.control.selected_index == 5:
-            page.client_storage.set('user', {})
+            await shared_preferences.set('user', {})
             if page.platform == 'android':
                 import os
                 os._exit(0)
@@ -401,10 +404,10 @@ async def main(page: ft.Page):
         pagelet.end_drawer.update()
 
     topbar = ft.CupertinoAppBar(
-        #title=ft.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
         #leading=ft.Icon(ft.icons.WB_SUNNY),
         #trailing=ft.Icon(ft.icons.WB_SUNNY_OUTLINED),
-        middle=ft.Row([
+        #title=ft.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
+        title=ft.Row([
             page.bar_search_products,
             #ft.IconButton(icon=ft.Icons.LOCAL_SHIPPING, on_click=basket_order),
             ft.IconButton(icon=ft.Icons.SHOPPING_BASKET, on_click=basket_order_customer),
@@ -417,7 +420,7 @@ async def main(page: ft.Page):
         appbar=topbar,
         content=content_panel,
         bgcolor=ft.Colors.WHITE,
-        bottom_app_bar=bottomappbar,
+        bottom_appbar=bottomappbar,
         end_drawer=ft.NavigationDrawer(
             on_dismiss=handle_dismiss_navigation_drawer,
             on_change=handle_change_navigation_drawer,
@@ -460,7 +463,7 @@ async def main(page: ft.Page):
                 if evt.ctrl:
                     page.basket.clearing()
             case 'F1':
-                page.open(AboutDialog(page=page))
+                page.open(AboutDialog())
             case 'F2':
                 if evt.ctrl:
                     del page.basket.customer
@@ -490,5 +493,4 @@ async def main(page: ft.Page):
 
     page.locale_configuration = ft.LocaleConfiguration([ft.Locale(language_code='en', country_code='US'), ft.Locale(language_code='ru', country_code='RU')])
 
-
-ft.app(main, use_color_emoji=True)#, port=9000
+ft.run(main)

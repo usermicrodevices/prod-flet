@@ -4,6 +4,7 @@ from html.parser import HTMLParser
 
 from log_tools import *
 
+shared_preferences = flet.SharedPreferences()
 
 class CSRFParser(HTMLParser):
     csrfmiddlewaretoken = ''
@@ -19,11 +20,11 @@ class HttpConnector():
     auth_success = False
 
     def __init__(self, page: flet.Page):
-        self.http_protocol = page.client_storage.get('protocol') or 'http://'
-        self.http_host = page.client_storage.get('host')
-        self.http_port = page.client_storage.get('port')
-        self.http_login = page.client_storage.get('login')
-        self.http_password = page.client_storage.get('password')
+        self.http_protocol = shared_preferences.get('protocol') or 'http://'
+        self.http_host = shared_preferences.get('host')
+        self.http_port = shared_preferences.get('port')
+        self.http_login = shared_preferences.get('login')
+        self.http_password = shared_preferences.get('password')
         self.url_base = f'''{self.http_protocol}{self.http_host}{f':{self.http_port}' if self.http_port else ''}'''
         self.url_admin = f'{self.url_base}/admin/login/'
         self.url_loign = f'{self.url_base}/api/login/'
@@ -60,7 +61,7 @@ class HttpConnector():
 
     def auth(self, show_alert=False, network_timeout=10):
         self.auth_success = False
-        self.page.client_storage.set('user', {})
+        self.shared_preferences.set('user', {})
         self.log(LD, ['🍪GET🍪', self.url_admin])
         try:
             response = self.session.get(self.url_admin, timeout=network_timeout)
@@ -100,7 +101,7 @@ class HttpConnector():
                         self.log(LE, [e])
                     else:
                         user_data = data.get('user', {})
-                        self.page.client_storage.set('user', user_data)
+                        shared_preferences.set('user', user_data)
                     self.log(LD, ['🍰RESPONSE.CONTENT🍰', user_data])
                     return 200
         else:

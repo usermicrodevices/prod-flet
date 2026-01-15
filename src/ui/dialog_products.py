@@ -25,13 +25,13 @@ class Caption(ft.DataColumn):
 
 class ProductsDialog(ft.AlertDialog):
     def __init__(self, *args, **kwargs):
-        page = kwargs.pop('page')
+        #page = kwargs.pop('page')
         super().__init__(*args, **kwargs)
         #self.title = ft.TextField('products')
         self.limit = 10
         self.offset = 0
-        self.products_count, msg = page.db_conn.get_products_count()
-        products, msg = page.db_conn.get_products(limit=10, offset=0)
+        self.products_count, msg = self.page.db_conn.get_products_count()
+        products, msg = self.page.db_conn.get_products(limit=10, offset=0)
         if not products:
             self.content = ft.Text(msg)
         else:
@@ -64,7 +64,7 @@ class ProductsDialog(ft.AlertDialog):
             DialogAction('select', is_ok=True, on_click=self.handle_action_click),
             DialogAction('cancel', on_click=self.handle_action_click)
         ]
-        self.page = page
+        #self.page = page
 
     def data_as_rows(self, data):
         return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['id'])), ft.DataCell(ft.Text(d['article'][:10])), ft.DataCell(ft.Text(d['name'][:10])), ft.DataCell(ft.Text(d['price'])), ft.DataCell(ft.Text('\n'.join(d['barcodes'])))], on_select_changed=self.on_select, data=d) for d in data]
