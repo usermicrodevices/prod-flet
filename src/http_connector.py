@@ -19,12 +19,12 @@ class HttpConnector():
     session = requests.Session()
     auth_success = False
 
-    def __init__(self, page: flet.Page):
-        self.http_protocol = shared_preferences.get('protocol') or 'http://'
-        self.http_host = shared_preferences.get('host')
-        self.http_port = shared_preferences.get('port')
-        self.http_login = shared_preferences.get('login')
-        self.http_password = shared_preferences.get('password')
+    async def __init__(self, page: flet.Page):
+        self.http_protocol = await shared_preferences.get('protocol') or 'http://'
+        self.http_host = await shared_preferences.get('host')
+        self.http_port = await shared_preferences.get('port')
+        self.http_login = await shared_preferences.get('login')
+        self.http_password = await shared_preferences.get('password')
         self.url_base = f'''{self.http_protocol}{self.http_host}{f':{self.http_port}' if self.http_port else ''}'''
         self.url_admin = f'{self.url_base}/admin/login/'
         self.url_loign = f'{self.url_base}/api/login/'
@@ -36,9 +36,9 @@ class HttpConnector():
         self.url_customers = f'{self.url_base}/api/customers/'
         self.page = page
 
-    async def __aenter__(self):
+    def __aenter__(self):
         while not self.page:
-            await asyncio.sleep(1)
+            asyncio.sleep(1)
 
     async def __aexit__(self, exc_type, exc, tb):
         while not self.page:
@@ -59,9 +59,9 @@ class HttpConnector():
     def alert(self, msg: str, caption: str = 'error'):
         self.page.alert(msg, caption)
 
-    def auth(self, show_alert=False, network_timeout=10):
+    async def auth(self, show_alert=False, network_timeout=10):
         self.auth_success = False
-        self.shared_preferences.set('user', {})
+        await shared_preferences.set('user', {})
         self.log(LD, ['🍪GET🍪', self.url_admin])
         try:
             response = self.session.get(self.url_admin, timeout=network_timeout)
@@ -101,7 +101,7 @@ class HttpConnector():
                         self.log(LE, [e])
                     else:
                         user_data = data.get('user', {})
-                        shared_preferences.set('user', user_data)
+                        await shared_preferences.set('user', user_data)
                     self.log(LD, ['🍰RESPONSE.CONTENT🍰', user_data])
                     return 200
         else:
