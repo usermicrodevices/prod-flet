@@ -62,7 +62,7 @@ class CustomerDialog(flet.CupertinoAlertDialog):
     def handle_action_click(self, evt):
         if evt.control.is_ok:
             self.send_data()
-        self.page.close(evt.control.parent)
+        self.page.pop_dialog(evt.control.parent)
         self.page.customer_dialog = None
 
     def send_data(self):
@@ -90,7 +90,7 @@ class CustomerDialog(flet.CupertinoAlertDialog):
             self.search_bar.focus()
             self.search_bar.value = self.page.basket.customer
             self.search_bar.update()
-            #self.page.close(self)
+            #self.page.pop_dialog(self)
 
     def search_close_autocompletes(self, value: str = '', only_clear: bool = False):
         if self.search_list_view.controls:

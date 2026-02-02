@@ -43,6 +43,7 @@ async def main(page: flet.Page):
     appargs = argsparser.parse_args()
 
     preferences = flet.SharedPreferences()
+
     if hasattr(appargs, 'clear_preferences'):
         logging.debug(f'🛠️⚙ CLEAR PREFERENCES... ⚙🛠️')
         await preferences.clear()
@@ -69,11 +70,12 @@ async def main(page: flet.Page):
         ph = fph.PermissionHandler()
         page.overlay.append(ph)
 
-    alert_dlg = flet.AlertDialog(modal=True, actions=[flet.TextButton('ok', on_click=lambda e: page.close(e.control.parent))])
+    #alert_dlg = flet.AlertDialog(modal=True, actions=[flet.TextButton('ok', on_click=lambda e: page.pop_dialog(e.control.parent))])
+    alert_dlg = flet.AlertDialog(modal=True, actions=[flet.TextButton('ok', on_click=lambda e: page.pop_dialog())])
     def alert(msg: str, caption: str = 'error'):
         alert_dlg.title = flet.Text(caption)
         alert_dlg.content = flet.Text(msg)
-        page.open(alert_dlg)
+        page.show_dialog(alert_dlg)
     page.alert = alert
 
     size_status_text = 45
@@ -176,7 +178,12 @@ async def main(page: flet.Page):
         except Exception as e:
             logging.error(e)
             #page.alert(f'{e}')
-        page.db_conn = DbConnector(file_name=await preferences.get('db_file_name') or 'prod.db')
+        logging.debug('✋🎹GET DB FILE NAME...🎹✋')
+        db_file_name = 'prod.db'
+        if await preferences.contains_key('db_file_name'):
+            db_file_name = await preferences.get('db_file_name') or db_file_name
+        page.db_conn = DbConnector(file_name=db_file_name)
+        logging.debug(f'✋🎹{page.db_conn}({db_file_name})🎹✋')
         full_products, msg = page.db_conn.get_products_count()
         update_status_ctrl({0:f'{full_products}🧷0'})#, 1:'🛒0', 2:'🗒'
         logging.debug('CHECK ACCESSIBLE RETAIL HARDWARE...')
@@ -191,9 +198,9 @@ async def main(page: flet.Page):
                 logging.error(e)
         logging.debug('CHECK REMOTE NETWORK CONNECTION...')
         page.http_conn = HttpConnector(page)
-        status_code = page.http_conn.auth(show_alert=True)
-        sync_products(page)
-        sync_customers(page)
+        status_code = await page.http_conn.auth(show_alert=True)
+        await sync_products(page)
+        await sync_customers(page)
     page.run_task(after_page_loaded, page)
 
     async def infinity_sync_cache():
@@ -212,27 +219,30 @@ async def main(page: flet.Page):
                 logging.debug(f'⌛♾ {self_name} SYNC PRODUCTS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ♾⌛')
             else:
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC PRODUCTS... ⏰♾⌛')
-                sync_products(page)
+                await sync_products(page)
                 logging.debug(f'⌛♾ {self_name} SYNC PRODUCTS FINISHED ♾⌛')
             ############################
             if page.sync_customers_running:
                 logging.debug(f'⌛♾ {self_name} SYNC CUSTOMERS IS RUNNING NOW, WAIT NEXT TIME INTERVAL ♾⌛')
             else:
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC CUSTOMERS... ⏰♾⌛')
-                sync_customers(page)
+                await sync_customers(page)
                 logging.debug(f'⌛♾ {self_name} SYNC CUSTOMERS FINISHED ♾⌛')
-    page.run_task(infinity_sync_cache)
+    #page.run_task(infinity_sync_cache)
+    page.run_thread(infinity_sync_cache)
 
     async def infinity_sync_sales():
         self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⌛⏰ RUN {self_name}... ⏰⌛')
         while True:
             sync_sales_interval = 300
+            logging.debug(f'⌛📂📄🖊️ {self_name} DEFAULT {sync_sales_interval} SECONDS WAIT... 🖊️📄📂⌛')
             if not await preferences.contains_key('sync_sales_interval'):
                 await preferences.set('sync_sales_interval', sync_sales_interval)
+                logging.debug(f'⌛📷♾ {self_name} SET {sync_sales_interval} SECONDS WAIT... ♾📷⌛')
             else:
                 syncsalesinterval = await preferences.get('sync_sales_interval')
-                logging.debug(f'⌛📷♾ {self_name} {syncsalesinterval} SECONDS WAIT... ♾📷⌛')
+                logging.debug(f'⌛📷♾ {self_name} GET {syncsalesinterval} SECONDS WAIT... ♾📷⌛')
                 try:
                     sync_sales_interval = int(syncsalesinterval)
                 except ValueError as e:
@@ -247,13 +257,13 @@ async def main(page: flet.Page):
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC SALES... ⏰♾⌛')
                 sync_sales(page)
                 logging.debug(f'⌛♾ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ♾⌛')
-    page.run_task(infinity_sync_sales)
+    page.run_thread(infinity_sync_sales)
 
     def open_autocomplete(evt):
         page.bar_search_products.open_view()
 
-    def close_autocomplete(evt):
-        page.bar_search_products.close_view()
+    async def close_autocomplete(evt):
+        await page.bar_search_products.close_view()
 
     def on_search(evt: flet.ControlEvent):
         if evt.control.value:
@@ -264,11 +274,11 @@ async def main(page: flet.Page):
 
     search_lv = flet.ListView()
 
-    def search_close_autocompletes(value: str = '', only_clear: bool = False):
+    async def search_close_autocompletes(value: str = '', only_clear: bool = False):
         if search_lv.controls:
             search_lv.controls = []
             if not only_clear:
-                page.bar_search_products.close_view()
+                await page.bar_search_products.close_view()
             if value:
                 page.bar_search_products.value = value
             update_status_ctrl({4:'💬'})
@@ -311,13 +321,14 @@ async def main(page: flet.Page):
     )
 
     page.customer_dialog = None
+    #page.add(page.customer_dialog)
 
     async def basket_order_customer(evt: flet.ControlEvent = None):
         if await preferences.get('use_order_customer_dialog'):
             if not page.customer_dialog:
                 page.customer_dialog = CustomerDialog(doc_type='order_customer')
             if page.customer_dialog and not page.customer_dialog.open:
-                page.open(page.customer_dialog)
+                page.show_dialog(page.customer_dialog)
         else:
             if len(page.basket.controls):
                 page.run_thread(page.basket.send_data, 'order_customer')
@@ -327,7 +338,7 @@ async def main(page: flet.Page):
             if not page.customer_dialog:
                 page.customer_dialog = CustomerDialog(doc_type='sale')
             if page.customer_dialog and not page.customer_dialog.open:
-                page.open(page.customer_dialog)
+                page.show_dialog(page.customer_dialog)
         else:
             if len(page.basket.controls):
                 page.run_thread(page.basket.send_data)
@@ -335,7 +346,7 @@ async def main(page: flet.Page):
     def basket_order(evt: flet.ControlEvent = None):
         if page.customer_dialog:
             if page.customer_dialog.open:
-                page.close(page.customer_dialog)
+                page.pop_dialog()#page.customer_dialog)
             page.customer_dialog = None
         if len(page.basket.controls):
             page.run_thread(page.basket.send_data, 'order')
@@ -372,10 +383,10 @@ async def main(page: flet.Page):
         page.update()
 
     def open_poducts(evt: flet.ControlEvent):
-        page.open(ProductsDialog())
+        page.show_dialog(ProductsDialog())
 
     def open_documents(evt: flet.ControlEvent):
-        page.open(DocumentsDialog())
+        page.show_dialog(DocumentsDialog())
 
     def basket_clear(evt: flet.ControlEvent):
         page.basket.clearing()
@@ -406,9 +417,9 @@ async def main(page: flet.Page):
         if evt.control.selected_index == 0:
             basket_order()
         elif evt.control.selected_index == 1:
-            page.open(SettingsDialog())
+            page.show_dialog(SettingsDialog())
         elif evt.control.selected_index == 2:
-            page.open(ProductsDialog())
+            page.show_dialog(ProductsDialog())
         elif evt.control.selected_index == 3:
             if not page.sync_products_running:
                 cnt, msg = page.db_conn.clear_products()
@@ -417,7 +428,7 @@ async def main(page: flet.Page):
                 #cnt, msg = page.db_conn.clear_customers()
                 #logging.debug([msg, cnt])
         elif evt.control.selected_index == 4:
-                page.open(AboutDialog())
+                page.show_dialog(AboutDialog())
         elif evt.control.selected_index == 5:
             await preferences.set('user', {})
             if page.platform == 'android':
@@ -476,32 +487,32 @@ async def main(page: flet.Page):
         match evt.key:
             case 'Escape':
                 if alert_dlg.open:
-                    page.close(alert_dlg)
+                    page.pop_dialog()#alert_dlg)
                 if page.customer_dialog:
                     page.customer_dialog = None
             case 'Enter':
                 if page.customer_dialog:
                     page.customer_dialog.send_data()
-                    page.close(page.customer_dialog)
+                    page.pop_dialog()#page.customer_dialog)
                     page.customer_dialog = None
             case 'Delete':
                 if evt.ctrl:
                     page.basket.clearing()
             case 'F1':
-                page.open(AboutDialog())
+                page.show_dialog(AboutDialog())
             case 'F2':
                 if evt.ctrl:
                     del page.basket.customer
                     page.update_status_ctrl({5:f'👨{page.basket.customer}'})
                     if page.customer_dialog:
                         if page.customer_dialog.open:
-                            page.close(page.customer_dialog)
+                            page.pop_dialog()#page.customer_dialog)
                         page.customer_dialog = None
                 else:
                     if not page.customer_dialog:
                         page.customer_dialog = CustomerDialog()
                     if page.customer_dialog and not page.customer_dialog.open:
-                        page.open(page.customer_dialog)
+                        page.show_dialog(page.customer_dialog)
             case 'F3':
                 page.basket.focus_sum_final()
             case 'F4':

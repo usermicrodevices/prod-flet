@@ -7,7 +7,7 @@ def db_update_products(page, data_prods):
         logging.debug(['UPDATED_PRODUCTS', count_updated, msg])
     return count_updated
 
-def sync_products(page):
+async def sync_products(page):
     if page.sync_products_running:
         logging.debug('sync_products is running now')
         return
@@ -29,7 +29,7 @@ def sync_products(page):
             page.db_conn.update_cache(table_names=['products'])
     else:
         logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
-        status_code = page.http_conn.auth()
+        status_code = await page.http_conn.auth()
     page.sync_products_running = False
 
 def db_update_customers(page, data_customers):
@@ -39,7 +39,7 @@ def db_update_customers(page, data_customers):
         logging.debug(['UPDATED_CUSTOMERS', count_updated, msg])
     return count_updated
 
-def sync_customers(page):
+async def sync_customers(page):
     if page.sync_customers_running:
         logging.debug('sync_customers is running now')
         return
@@ -61,10 +61,10 @@ def sync_customers(page):
             page.db_conn.update_cache(table_names=['customers'])
     else:
         logging.debug(['SYNC_PRODUCTS', 'AUTH NOT EXISTS'])
-        status_code = page.http_conn.auth()
+        status_code = await page.http_conn.auth()
     page.sync_products_running = False
 
-def sync_sales(page):
+async def sync_sales(page):
     if not page.db_conn:
         logging.debug([__name__, 'DB CONNECTION EMPTY'])
         return
@@ -87,7 +87,7 @@ def sync_sales(page):
                 logging.debug(['SALE FINISH SEND TO SERVER', sended])
             if not sended:
                 logging.debug('CONNECTION ERROR')
-                status_code = page.http_conn.auth()
+                status_code = await page.http_conn.auth()
                 break
             elif rowids:
                 cleared_count, msg = page.db_conn.clear_records(rowids)

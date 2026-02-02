@@ -73,12 +73,12 @@ class ProductsDialog(ft.AlertDialog):
         logging.debug(['ON_SELECT', evt.data, evt.control.data])
         if evt.control.data:
             self.page.basket.add(evt.control.data)
-        self.page.close(self)
+        self.page.pop_dialog(self)
 
     def handle_action_click(self, evt):
         if evt.control.is_ok:
             self.page.run_thread(sync_products, self.page)
-        self.page.close(evt.control.parent)
+        self.page.pop_dialog(evt.control.parent)
 
     def handle_prev(self, evt):
         self.products_count, msg = self.page.db_conn.get_products_count()

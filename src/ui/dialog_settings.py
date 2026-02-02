@@ -123,10 +123,10 @@ class SettingsDialog(flet.CupertinoAlertDialog):
                 self.page.http_conn.http_login = self.login.value
             if self.page.http_conn.http_password != self.password.value:
                 self.page.http_conn.http_password = self.password.value
-            if self.page.http_conn.auth(True) == 200:
+            if await self.page.http_conn.auth(True) == 200:
                 self.page.run_thread(sync_products, self.page)
             try:
                 set_locale(self.translation_language.value, locale_dir=self.page.directory_locale)
             except Exception as e:
                 self.log(LE, [e])
-        self.page.close(evt.control.parent)
+        self.page.pop_dialog(evt.control.parent)
