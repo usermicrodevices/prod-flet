@@ -383,10 +383,12 @@ async def main(page: flet.Page):
         page.update()
 
     def open_poducts(evt: flet.ControlEvent):
-        page.show_dialog(ProductsDialog())
+        page.products_dialog = ProductsDialog()
+        page.show_dialog(page.products_dialog)
 
     def open_documents(evt: flet.ControlEvent):
-        page.show_dialog(DocumentsDialog())
+        page.documents_dialog = DocumentsDialog()
+        page.show_dialog(page.documents_dialog)
 
     def basket_clear(evt: flet.ControlEvent):
         page.basket.clearing()
@@ -417,9 +419,11 @@ async def main(page: flet.Page):
         if evt.control.selected_index == 0:
             basket_order()
         elif evt.control.selected_index == 1:
-            page.show_dialog(SettingsDialog())
+            page.settings_dialog = SettingsDialog()
+            page.show_dialog(page.settings_dialog)
         elif evt.control.selected_index == 2:
-            page.show_dialog(ProductsDialog())
+            page.products_dialog = ProductsDialog()
+            page.show_dialog(page.products_dialog)
         elif evt.control.selected_index == 3:
             if not page.sync_products_running:
                 cnt, msg = page.db_conn.clear_products()
@@ -428,7 +432,8 @@ async def main(page: flet.Page):
                 #cnt, msg = page.db_conn.clear_customers()
                 #logging.debug([msg, cnt])
         elif evt.control.selected_index == 4:
-                page.show_dialog(AboutDialog())
+            page.about_dialog = AboutDialog()
+            page.show_dialog(page.about_dialog)
         elif evt.control.selected_index == 5:
             await preferences.set('user', {})
             if page.platform == 'android':
@@ -487,7 +492,8 @@ async def main(page: flet.Page):
         match evt.key:
             case 'Escape':
                 if alert_dlg.open:
-                    page.pop_dialog()#alert_dlg)
+                    page.pop_dialog()
+                    alert_dlg.open = False
                 if page.customer_dialog:
                     page.customer_dialog = None
             case 'Enter':
@@ -499,7 +505,8 @@ async def main(page: flet.Page):
                 if evt.ctrl:
                     page.basket.clearing()
             case 'F1':
-                page.show_dialog(AboutDialog())
+                page.about_dialog = AboutDialog()
+                page.show_dialog(page.about_dialog)
             case 'F2':
                 if evt.ctrl:
                     del page.basket.customer
