@@ -8,9 +8,9 @@ class SettingsDialogAction(flet.CupertinoDialogAction):
     def __init__(self, *args, **kwargs):
         self.is_ok = kwargs.pop('is_ok', False)
         if self.is_ok:
-            kwargs['is_destructive_action'] = True
-        if 'is_default_action' not in kwargs:
-            kwargs['is_default_action'] = False
+            kwargs['destructive'] = True
+        if 'default' not in kwargs:
+            kwargs['default'] = False
         super().__init__(*args, **kwargs)
 
 
@@ -18,7 +18,7 @@ class CustomerDialog(flet.CupertinoAlertDialog):
     def __init__(self, *args, **kwargs):
         self.doc_type = kwargs.pop('doc_type', '')
         super().__init__(*args, **kwargs)
-        #self.title = flet.TextField('Select Customer Dialog')
+        self.title = flet.Text('Select Customer Dialog')
 
         self.search_list_view = flet.ListView()
 

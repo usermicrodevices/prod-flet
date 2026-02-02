@@ -17,9 +17,9 @@ class SettingsDialogAction(flet.CupertinoDialogAction):
     def __init__(self, *args, **kwargs):
         self.is_ok = kwargs.pop('is_ok', False)
         if self.is_ok:
-            kwargs['is_destructive_action'] = True
-        if 'is_default_action' not in kwargs:
-            kwargs['is_default_action'] = False
+            kwargs['destructive'] = True
+        if 'default' not in kwargs:
+            kwargs['default'] = False
         super().__init__(*args, **kwargs)
 
 

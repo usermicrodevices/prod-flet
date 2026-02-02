@@ -89,6 +89,7 @@ async def main(page: flet.Page):
         flet.Text(size=size_status_text, value='💬'),
         flet.Text(size=size_status_text, value='👨')]
     page.status_ctrl = flet.GridView(controls=ctrls, max_extent=size_status_text*1.2)
+    page.add(page.status_ctrl)
 
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
@@ -145,15 +146,15 @@ async def main(page: flet.Page):
                         page.scan_barcode_close()
                         page.scan_img = None
                     page.scan_img = flet.Container(height=200, width=400, alignment=flet.alignment.center, bgcolor=flet.Colors.GREY_200, content=FletZxing(on_scan_success=on_scansuccess))
-                    update_status_ctrl({3:'🎦'})#📷📹
+                    update_status_ctrl({3:'🎦'})
                     content_panel.controls.insert(0, page.scan_img)
                     content_panel.update()
                 else:
                     page.scan_img = CameraMaster(reader_callback=product_add, width=320, height=240, expand=True)
                     if not page.scan_img.cap:
-                        update_status_ctrl({3:'📴'})#📽
+                        update_status_ctrl({3:'📴'})
                     else:
-                        update_status_ctrl({3:'🎦'})#📷📹
+                        update_status_ctrl({3:'🎦'})
                         content_panel.controls.insert(0, page.scan_img)
                         content_panel.update()
             else:
@@ -228,7 +229,6 @@ async def main(page: flet.Page):
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC CUSTOMERS... ⏰♾⌛')
                 await sync_customers(page)
                 logging.debug(f'⌛♾ {self_name} SYNC CUSTOMERS FINISHED ♾⌛')
-    #page.run_task(infinity_sync_cache)
     page.run_thread(infinity_sync_cache)
 
     async def infinity_sync_sales():
@@ -313,21 +313,21 @@ async def main(page: flet.Page):
         on_focus = on_focus_search_bar
     )
 
-    page.basket = BasketControl(#page=page,
+    page.basket = BasketControl(
         expand_icon_color = flet.Colors.GREEN,
         elevation = 4,
         divider_color=flet.Colors.GREEN,
         spacing = 0
     )
 
-    page.customer_dialog = None
-    #page.add(page.customer_dialog)
+    page.customer_dialog = CustomerDialog(modal=True)
+    page.add(page.customer_dialog)
 
     async def basket_order_customer(evt: flet.ControlEvent = None):
         if await preferences.get('use_order_customer_dialog'):
-            if not page.customer_dialog:
-                page.customer_dialog = CustomerDialog(doc_type='order_customer')
-            if page.customer_dialog and not page.customer_dialog.open:
+            if page.customer_dialog.doc_type != 'order_customer':
+                page.customer_dialog.doc_type = 'order_customer'
+            if not page.customer_dialog.open:
                 page.show_dialog(page.customer_dialog)
         else:
             if len(page.basket.controls):
@@ -335,9 +335,9 @@ async def main(page: flet.Page):
 
     async def basket_sale(evt: flet.ControlEvent = None):
         if await preferences.get('use_sale_customer_dialog'):
-            if not page.customer_dialog:
-                page.customer_dialog = CustomerDialog(doc_type='sale')
-            if page.customer_dialog and not page.customer_dialog.open:
+            if page.customer_dialog.doc_type != 'sale':
+                page.customer_dialog.doc_type = 'sale'
+            if not page.customer_dialog.open:
                 page.show_dialog(page.customer_dialog)
         else:
             if len(page.basket.controls):
@@ -346,8 +346,8 @@ async def main(page: flet.Page):
     def basket_order(evt: flet.ControlEvent = None):
         if page.customer_dialog:
             if page.customer_dialog.open:
-                page.pop_dialog()#page.customer_dialog)
-            page.customer_dialog = None
+                page.pop_dialog()
+            page.customer_dialog.open = False
         if len(page.basket.controls):
             page.run_thread(page.basket.send_data, 'order')
 
@@ -382,12 +382,18 @@ async def main(page: flet.Page):
         pagelet.end_drawer.update()
         page.update()
 
+    page.products_dialog = None
     def open_poducts(evt: flet.ControlEvent):
-        page.products_dialog = ProductsDialog()
+        if not page.products_dialog:
+            page.products_dialog = ProductsDialog(modal=True, db_conn=page.db_conn)
+            page.add(page.products_dialog)
         page.show_dialog(page.products_dialog)
 
+    page.documents_dialog = None
     def open_documents(evt: flet.ControlEvent):
-        page.documents_dialog = DocumentsDialog()
+        if not page.documents_dialog:
+            page.documents_dialog = DocumentsDialog(modal=True, http_conn=page.http_conn)
+            page.add(page.documents_dialog)
         page.show_dialog(page.documents_dialog)
 
     def basket_clear(evt: flet.ControlEvent):
@@ -422,7 +428,7 @@ async def main(page: flet.Page):
             page.settings_dialog = SettingsDialog()
             page.show_dialog(page.settings_dialog)
         elif evt.control.selected_index == 2:
-            page.products_dialog = ProductsDialog()
+            #page.products_dialog = ProductsDialog()
             page.show_dialog(page.products_dialog)
         elif evt.control.selected_index == 3:
             if not page.sync_products_running:
@@ -497,10 +503,10 @@ async def main(page: flet.Page):
                 if page.customer_dialog:
                     page.customer_dialog = None
             case 'Enter':
-                if page.customer_dialog:
+                if page.customer_dialog.open:
                     page.customer_dialog.send_data()
-                    page.pop_dialog()#page.customer_dialog)
-                    page.customer_dialog = None
+                    page.pop_dialog()
+                    page.customer_dialog.open = False
             case 'Delete':
                 if evt.ctrl:
                     page.basket.clearing()
@@ -511,14 +517,11 @@ async def main(page: flet.Page):
                 if evt.ctrl:
                     del page.basket.customer
                     page.update_status_ctrl({5:f'👨{page.basket.customer}'})
-                    if page.customer_dialog:
-                        if page.customer_dialog.open:
-                            page.pop_dialog()#page.customer_dialog)
-                        page.customer_dialog = None
+                    if page.customer_dialog.open:
+                        page.pop_dialog()
+                        page.customer_dialog.open = False
                 else:
-                    if not page.customer_dialog:
-                        page.customer_dialog = CustomerDialog()
-                    if page.customer_dialog and not page.customer_dialog.open:
+                    if not page.customer_dialog.open:
                         page.show_dialog(page.customer_dialog)
             case 'F3':
                 page.basket.focus_sum_final()

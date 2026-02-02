@@ -25,13 +25,13 @@ class Caption(ft.DataColumn):
 
 class ProductsDialog(ft.AlertDialog):
     def __init__(self, *args, **kwargs):
-        #page = kwargs.pop('page')
+        db_conn = kwargs.pop('db_conn')
         super().__init__(*args, **kwargs)
-        #self.title = ft.TextField('products')
+        self.title = ft.Text('products')
         self.limit = 10
         self.offset = 0
-        self.products_count, msg = self.page.db_conn.get_products_count()
-        products, msg = self.page.db_conn.get_products(limit=10, offset=0)
+        self.products_count, msg = db_conn.get_products_count()
+        products, msg = db_conn.get_products(limit=10, offset=0)
         if not products:
             self.content = ft.Text(msg)
         else:
