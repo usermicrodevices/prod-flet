@@ -4,7 +4,6 @@ from html.parser import HTMLParser
 
 from log_tools import *
 
-shared_preferences = flet.SharedPreferences()
 
 class CSRFParser(HTMLParser):
     csrfmiddlewaretoken = ''
@@ -14,17 +13,36 @@ class CSRFParser(HTMLParser):
             if set(['type', 'name', 'value']) <= set(kwargs.keys()) and kwargs['name'] == 'csrfmiddlewaretoken':
                 self.csrfmiddlewaretoken = kwargs['value']
 
+class AsyncMixin:
+    def __init__(self, *args, **kwargs):
+        self.__storedargs = args, kwargs
+        self.async_initialized = False
 
-class HttpConnector():
+    async def __ainit__(self, *args, **kwargs):
+        pass
+
+    async def __initobj(self):
+        assert not self.async_initialized
+        self.async_initialized = True
+        await self.__ainit__(*self.__storedargs[0], **self.__storedargs[1])
+        return self
+
+    def __await__(self):
+        return self.__initobj().__await__()
+
+
+class HttpConnector(AsyncMixin):
     session = requests.Session()
     auth_success = False
 
-    async def __init__(self, page: flet.Page):
-        self.http_protocol = await shared_preferences.get('protocol') or 'http://'
-        self.http_host = await shared_preferences.get('host')
-        self.http_port = await shared_preferences.get('port')
-        self.http_login = await shared_preferences.get('login')
-        self.http_password = await shared_preferences.get('password')
+    def __init__(self, page: flet.Page):
+        self.page = page
+        self.preferences = flet.SharedPreferences()
+        self.http_protocol = 'http://'
+        self.http_host = '127.0.0.1'
+        self.http_port = 80
+        self.http_login = 'admin'
+        self.http_password = 'admin'
         self.url_base = f'''{self.http_protocol}{self.http_host}{f':{self.http_port}' if self.http_port else ''}'''
         self.url_admin = f'{self.url_base}/admin/login/'
         self.url_loign = f'{self.url_base}/api/login/'
@@ -34,7 +52,22 @@ class HttpConnector():
         self.url_documents = f'{self.url_base}/api/docs/'
         self.url_sales_receipt = f'{self.url_base}/api/doc/%s/sales_receipt%s'
         self.url_customers = f'{self.url_base}/api/customers/'
-        self.page = page
+
+    async def __ainit__(self):
+        self.http_protocol = await self.preferences.get('protocol') or 'http://'
+        self.http_host = await self.preferences.get('host')
+        self.http_port = await self.preferences.get('port')
+        self.http_login = await self.preferences.get('login')
+        self.http_password = await self.preferences.get('password')
+        self.url_base = f'''{self.http_protocol}{self.http_host}{f':{self.http_port}' if self.http_port else ''}'''
+        self.url_admin = f'{self.url_base}/admin/login/'
+        self.url_loign = f'{self.url_base}/api/login/'
+        self.url_product = f'{self.url_base}/api/product/'
+        self.url_products_cash = f'{self.url_base}/api/products/cash/'
+        self.url_doc_cash = f'{self.url_base}/api/doc/cash/'
+        self.url_documents = f'{self.url_base}/api/docs/'
+        self.url_sales_receipt = f'{self.url_base}/api/doc/%s/sales_receipt%s'
+        self.url_customers = f'{self.url_base}/api/customers/'
 
     def __aenter__(self):
         while not self.page:
@@ -53,7 +86,7 @@ class HttpConnector():
         for m in msgs:
             s += f'::{m}'
             if hasattr(m, '__traceback__'):
-                s += f'🇱🇮🇳🇪{m.__traceback__.tb_lineno}'
+                s += f'🔴{m.__traceback__.tb_lineno}'
         logging.log(lvl, s, *args, **kwargs)
 
     def alert(self, msg: str, caption: str = 'error'):
@@ -61,7 +94,9 @@ class HttpConnector():
 
     async def auth(self, show_alert=False, network_timeout=10):
         self.auth_success = False
-        await shared_preferences.set('user', {})
+        await self.preferences.set('user', '{}')
+        #while not hasattr(self, 'url_admin'):
+            #await asyncio.sleep(1)
         self.log(LD, ['🍪GET🍪', self.url_admin])
         try:
             response = self.session.get(self.url_admin, timeout=network_timeout)
@@ -101,7 +136,7 @@ class HttpConnector():
                         self.log(LE, [e])
                     else:
                         user_data = data.get('user', {})
-                        await shared_preferences.set('user', user_data)
+                        await self.preferences.set('user', f'{user_data}')
                     self.log(LD, ['🍰RESPONSE.CONTENT🍰', user_data])
                     return 200
         else:

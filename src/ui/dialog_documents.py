@@ -26,11 +26,11 @@ class Caption(ft.DataColumn):
 
 class DocumentsDialog(ft.AlertDialog):
     def __init__(self, *args, **kwargs):
-        #page = kwargs.pop('page')
+        http_conn = kwargs.pop('http_conn')
         super().__init__(*args, **kwargs)
         self.limit = 10
         self.offset = 0
-        self.pages, documents, msg = self.page.http_conn.get_documents()
+        self.pages, documents, msg = http_conn.get_documents()
         if not documents:
             self.content = ft.Text(msg)
         else:
@@ -62,7 +62,6 @@ class DocumentsDialog(ft.AlertDialog):
             DialogAction('select', is_ok=True, on_click=self.handle_action_click),
             DialogAction('cancel', on_click=self.handle_action_click)
         ]
-        #self.page = page
 
     def log(self, lvl=LN, msgs=[], *args, **kwargs):
         s = f'{LICONS[lvl]}::{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
@@ -90,12 +89,12 @@ class DocumentsDialog(ft.AlertDialog):
                 #res = lp.stdin.write(printer_content.decode('utf-8'))
                 res = lp.communicate(input=printer_content)
                 self.log(LD, ['LPR RESULT', res])
-        self.page.close(self)
+        self.page.pop_dialog(self)
 
     def handle_action_click(self, evt):
         if evt.control.is_ok:
             self.page.get_sales_receipt()
-        self.page.close(evt.control.parent)
+        self.page.pop_dialog(evt.control.parent)
 
     def handle_prev(self, evt):
         self.pages, documents, msg = self.page.http_conn.get_documents(self.offset, self.limit)

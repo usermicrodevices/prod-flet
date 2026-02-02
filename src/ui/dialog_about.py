@@ -40,4 +40,4 @@ class AboutDialog(ft.AlertDialog):
             f'''(flet {_("version")} {ft.version.version})'''
 
         self.content = ft.Text(CONTENT)
-        self.actions = [ft.TextButton('close', on_click=lambda evt: page.close(evt.control.parent))]
+        self.actions = [ft.TextButton('close', on_click=lambda evt: page.pop_dialog(evt.control.parent))]

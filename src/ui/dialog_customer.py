@@ -8,9 +8,9 @@ class SettingsDialogAction(flet.CupertinoDialogAction):
     def __init__(self, *args, **kwargs):
         self.is_ok = kwargs.pop('is_ok', False)
         if self.is_ok:
-            kwargs['is_destructive_action'] = True
-        if 'is_default_action' not in kwargs:
-            kwargs['is_default_action'] = False
+            kwargs['destructive'] = True
+        if 'default' not in kwargs:
+            kwargs['default'] = False
         super().__init__(*args, **kwargs)
 
 
@@ -18,7 +18,7 @@ class CustomerDialog(flet.CupertinoAlertDialog):
     def __init__(self, *args, **kwargs):
         self.doc_type = kwargs.pop('doc_type', '')
         super().__init__(*args, **kwargs)
-        #self.title = flet.TextField('Select Customer Dialog')
+        self.title = flet.Text('Select Customer Dialog')
 
         self.search_list_view = flet.ListView()
 
@@ -62,7 +62,7 @@ class CustomerDialog(flet.CupertinoAlertDialog):
     def handle_action_click(self, evt):
         if evt.control.is_ok:
             self.send_data()
-        self.page.close(evt.control.parent)
+        self.page.pop_dialog(evt.control.parent)
         self.page.customer_dialog = None
 
     def send_data(self):
@@ -90,7 +90,7 @@ class CustomerDialog(flet.CupertinoAlertDialog):
             self.search_bar.focus()
             self.search_bar.value = self.page.basket.customer
             self.search_bar.update()
-            #self.page.close(self)
+            #self.page.pop_dialog(self)
 
     def search_close_autocompletes(self, value: str = '', only_clear: bool = False):
         if self.search_list_view.controls:
