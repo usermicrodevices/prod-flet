@@ -10,6 +10,8 @@ try:
 except:
     use_custom_decimal_ctrl = False
 
+from background_tasks import get_prefs_value
+
 
 class FloatNumbersOnlyInputFilter(ft.InputFilter):
     def __init__(self):
@@ -115,7 +117,7 @@ class BasketControl(ft.ExpansionPanelList):
     def on_focus_count(self, evt: ft.ControlEvent):
         self.page.is_search_bar_focused = False
 
-    def add(self, product):
+    async def add(self, product):
         item = self.search(product)
         new_counts = 1.0
         if product.get('unit', {}).get('id', 0) in self.page.scales_unit_ids and self.page.scales and self.page.scales.data["weight"]:
@@ -132,7 +134,7 @@ class BasketControl(ft.ExpansionPanelList):
             sum_product = round(count * price, 2)
             item.data['ctrl_sum'].value = f'{sum_product}'
         else:
-            font_size = int(ft.SharedPreferences().get('basket_font_size') or 16)
+            font_size = await get_prefs_value('basket_font_size', int, 16)
             ctrl_count_from_server = ft.Text(product.get('count', '-'), text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
             str_price = f'{product['price']:.2f}'#.strip('0').strip('.')
             if not str_price:

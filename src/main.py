@@ -38,6 +38,7 @@ elif not flet.utils.platform_utils.is_mobile():
 from translation import set_locale, _
 
 
+
 async def main(page: flet.Page):
 
     appargs = argsparser.parse_args()
@@ -354,7 +355,7 @@ async def main(page: flet.Page):
     async def basket_add_product(product: dict):
         headers, prod = page.http_conn.get_product(product['id'], network_timeout=await preferences.get('network_timeout_get_product') or .1)
         product['count'] = '-' if not prod else prod['count']
-        page.basket.add(product)
+        await page.basket.add(product)
         search_close_autocompletes()
 
     def product_search(code: str):

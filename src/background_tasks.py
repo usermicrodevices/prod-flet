@@ -1,3 +1,4 @@
+import flet
 from log_tools import *
 
 def db_update_products(page, data_prods):
@@ -92,3 +93,14 @@ async def sync_sales(page):
             elif rowids:
                 cleared_count, msg = page.db_conn.clear_records(rowids)
                 logging.debug(['CLEARED LOCAL RECORDS', cleared_count, msg])
+
+async def get_prefs_value(key, tp, default = None):
+    result = default
+    value = await flet.SharedPreferences().get(key)
+    try:
+        result = tp(value)
+    except ValueError as e:
+        result = int(value.replace('"', ''))
+    except Exception as e:
+        logging.error(e)
+    return result

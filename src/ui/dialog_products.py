@@ -69,10 +69,10 @@ class ProductsDialog(ft.AlertDialog):
     def data_as_rows(self, data):
         return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['id'])), ft.DataCell(ft.Text(d['article'][:10])), ft.DataCell(ft.Text(d['name'][:10])), ft.DataCell(ft.Text(d['price'])), ft.DataCell(ft.Text('\n'.join(d['barcodes'])))], on_select_change=self.on_select, data=d) for d in data]
 
-    def on_select(self, evt):
+    async def on_select(self, evt):
         logging.debug(['ON_SELECT', evt.data, evt.control.data])
         if evt.control.data:
-            self.page.basket.add(evt.control.data)
+            await self.page.basket.add(evt.control.data)
         self.page.pop_dialog()#self
 
     def handle_action_click(self, evt):
