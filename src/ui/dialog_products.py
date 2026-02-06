@@ -46,7 +46,7 @@ class ProductsDialog(ft.AlertDialog):
                 show_checkbox_column = True,
                 column_spacing = 5,
                 border_radius = 5,
-                border = ft.border.all(2, 'green'),
+                border = ft.Border.all(2, 'green'),
                 vertical_lines = ft.BorderSide(2, 'green'),
                 horizontal_lines = ft.BorderSide(2, 'green'),
                 columns = captions,
