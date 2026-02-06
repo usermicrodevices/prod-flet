@@ -72,7 +72,7 @@ class DocumentsDialog(ft.AlertDialog):
         logging.log(lvl, s, *args, **kwargs)
 
     def data_as_rows(self, data):
-        return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['pk'])), ft.DataCell(ft.Text(d['fields']['registered_at'])), ft.DataCell(ft.Text(d['fields']['customer'])), ft.DataCell(ft.Text(d['fields']['sum_final']))], on_select_changed=self.on_select, data=d) for d in data]
+        return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['pk'])), ft.DataCell(ft.Text(d['fields']['registered_at'])), ft.DataCell(ft.Text(d['fields']['customer'])), ft.DataCell(ft.Text(d['fields']['sum_final']))], on_select_change=self.on_select, data=d) for d in data]
 
     def on_select(self, evt):
         self.log(LD, ['ON_SELECT', evt.data, evt.control.data])
@@ -89,12 +89,12 @@ class DocumentsDialog(ft.AlertDialog):
                 #res = lp.stdin.write(printer_content.decode('utf-8'))
                 res = lp.communicate(input=printer_content)
                 self.log(LD, ['LPR RESULT', res])
-        self.page.pop_dialog(self)
+        self.page.pop_dialog()#self
 
     def handle_action_click(self, evt):
         if evt.control.is_ok:
-            self.page.get_sales_receipt()
-        self.page.pop_dialog(evt.control.parent)
+            self.page.http_conn.get_sales_receipt()
+        self.page.pop_dialog()#evt.control.parent
 
     def handle_prev(self, evt):
         self.pages, documents, msg = self.page.http_conn.get_documents(self.offset, self.limit)

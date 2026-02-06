@@ -67,18 +67,18 @@ class ProductsDialog(ft.AlertDialog):
         #self.page = page
 
     def data_as_rows(self, data):
-        return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['id'])), ft.DataCell(ft.Text(d['article'][:10])), ft.DataCell(ft.Text(d['name'][:10])), ft.DataCell(ft.Text(d['price'])), ft.DataCell(ft.Text('\n'.join(d['barcodes'])))], on_select_changed=self.on_select, data=d) for d in data]
+        return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['id'])), ft.DataCell(ft.Text(d['article'][:10])), ft.DataCell(ft.Text(d['name'][:10])), ft.DataCell(ft.Text(d['price'])), ft.DataCell(ft.Text('\n'.join(d['barcodes'])))], on_select_change=self.on_select, data=d) for d in data]
 
     def on_select(self, evt):
         logging.debug(['ON_SELECT', evt.data, evt.control.data])
         if evt.control.data:
             self.page.basket.add(evt.control.data)
-        self.page.pop_dialog(self)
+        self.page.pop_dialog()#self
 
     def handle_action_click(self, evt):
         if evt.control.is_ok:
             self.page.run_thread(sync_products, self.page)
-        self.page.pop_dialog(evt.control.parent)
+        self.page.pop_dialog()#evt.control.parent
 
     def handle_prev(self, evt):
         self.products_count, msg = self.page.db_conn.get_products_count()
