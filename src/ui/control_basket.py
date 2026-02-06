@@ -173,13 +173,13 @@ class BasketControl(ft.ExpansionPanelList):
             ctrl_product = ft.Text(f"{product['name']}", size=font_size)
             ctrl_unit = ft.Text(product['unit']['label'], size=font_size-2)
             subtitle_controls = [
-                ft.Container(ctrl_count_from_server, margin=0, padding=ft.padding.only(right=2), expand=3),
-                ft.Container(ctrl_price, margin=0, padding=ft.padding.only(right=2), expand=3),
-                ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1),
+                ft.Container(ctrl_count_from_server, margin=0, padding=ft.Padding.only(right=2), expand=3),
+                ft.Container(ctrl_price, margin=0, padding=ft.Padding.only(right=2), expand=3),
+                ft.Container(ctrl_currency, margin=0, padding=ft.Padding.only(right=2), expand=1),
                 ctrl_count,
-                ft.Container(ctrl_unit, margin=0, padding=ft.padding.only(left=2), expand=1),
+                ft.Container(ctrl_unit, margin=0, padding=ft.Padding.only(left=2), expand=1),
                 ft.Container(ctrl_sum, margin=0, padding=0, expand=3),
-                ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1)
+                ft.Container(ctrl_currency, margin=0, padding=ft.Padding.only(right=2), expand=1)
             ]
             exp = ft.ExpansionPanel(bgcolor = ft.Colors.GREEN_100,
                 header = ft.Container(ft.ListTile(
