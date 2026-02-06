@@ -46,7 +46,7 @@ class ProductsDialog(ft.AlertDialog):
                 show_checkbox_column = True,
                 column_spacing = 5,
                 border_radius = 5,
-                border = ft.border.all(2, 'green'),
+                border = ft.Border.all(2, 'green'),
                 vertical_lines = ft.BorderSide(2, 'green'),
                 horizontal_lines = ft.BorderSide(2, 'green'),
                 columns = captions,
@@ -55,8 +55,8 @@ class ProductsDialog(ft.AlertDialog):
             self.content = ft.Column(controls=[
                 ft.Row([self.data_table]),
                 ft.Row([
-                        ft.ElevatedButton('Prev', on_click=self.handle_prev),
-                        ft.ElevatedButton('Next', on_click=self.handle_next)
+                        ft.Button('Prev', on_click=self.handle_prev),
+                        ft.Button('Next', on_click=self.handle_next)
                     ])
                 ]
             )
@@ -67,18 +67,18 @@ class ProductsDialog(ft.AlertDialog):
         #self.page = page
 
     def data_as_rows(self, data):
-        return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['id'])), ft.DataCell(ft.Text(d['article'][:10])), ft.DataCell(ft.Text(d['name'][:10])), ft.DataCell(ft.Text(d['price'])), ft.DataCell(ft.Text('\n'.join(d['barcodes'])))], on_select_changed=self.on_select, data=d) for d in data]
+        return [ft.DataRow(cells=[ft.DataCell(ft.Text(d['id'])), ft.DataCell(ft.Text(d['article'][:10])), ft.DataCell(ft.Text(d['name'][:10])), ft.DataCell(ft.Text(d['price'])), ft.DataCell(ft.Text('\n'.join(d['barcodes'])))], on_select_change=self.on_select, data=d) for d in data]
 
-    def on_select(self, evt):
+    async def on_select(self, evt):
         logging.debug(['ON_SELECT', evt.data, evt.control.data])
         if evt.control.data:
-            self.page.basket.add(evt.control.data)
-        self.page.pop_dialog(self)
+            await self.page.basket.add(evt.control.data)
+        self.page.pop_dialog()#self
 
     def handle_action_click(self, evt):
         if evt.control.is_ok:
             self.page.run_thread(sync_products, self.page)
-        self.page.pop_dialog(evt.control.parent)
+        self.page.pop_dialog()#evt.control.parent
 
     def handle_prev(self, evt):
         self.products_count, msg = self.page.db_conn.get_products_count()

@@ -10,6 +10,8 @@ try:
 except:
     use_custom_decimal_ctrl = False
 
+from background_tasks import get_prefs_value
+
 
 class FloatNumbersOnlyInputFilter(ft.InputFilter):
     def __init__(self):
@@ -115,7 +117,7 @@ class BasketControl(ft.ExpansionPanelList):
     def on_focus_count(self, evt: ft.ControlEvent):
         self.page.is_search_bar_focused = False
 
-    def add(self, product):
+    async def add(self, product):
         item = self.search(product)
         new_counts = 1.0
         if product.get('unit', {}).get('id', 0) in self.page.scales_unit_ids and self.page.scales and self.page.scales.data["weight"]:
@@ -132,7 +134,7 @@ class BasketControl(ft.ExpansionPanelList):
             sum_product = round(count * price, 2)
             item.data['ctrl_sum'].value = f'{sum_product}'
         else:
-            font_size = int(ft.SharedPreferences().get('basket_font_size') or 16)
+            font_size = await get_prefs_value('basket_font_size', int, 16)
             ctrl_count_from_server = ft.Text(product.get('count', '-'), text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
             str_price = f'{product['price']:.2f}'#.strip('0').strip('.')
             if not str_price:
@@ -140,7 +142,7 @@ class BasketControl(ft.ExpansionPanelList):
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
             sum_product = round(product['price']*new_counts, 2)
             ctrl_sum = ft.Text(str_price if new_counts == 1.0 else f'{sum_product}', text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
-            if self.page.is_superuser():
+            if await self.page.is_superuser():
                 ctrl_price = ft.TextField(str_price,
                     content_padding=0,
                     text_size=font_size,
@@ -171,13 +173,13 @@ class BasketControl(ft.ExpansionPanelList):
             ctrl_product = ft.Text(f"{product['name']}", size=font_size)
             ctrl_unit = ft.Text(product['unit']['label'], size=font_size-2)
             subtitle_controls = [
-                ft.Container(ctrl_count_from_server, margin=0, padding=ft.padding.only(right=2), expand=3),
-                ft.Container(ctrl_price, margin=0, padding=ft.padding.only(right=2), expand=3),
-                ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1),
+                ft.Container(ctrl_count_from_server, margin=0, padding=ft.Padding.only(right=2), expand=3),
+                ft.Container(ctrl_price, margin=0, padding=ft.Padding.only(right=2), expand=3),
+                ft.Container(ctrl_currency, margin=0, padding=ft.Padding.only(right=2), expand=1),
                 ctrl_count,
-                ft.Container(ctrl_unit, margin=0, padding=ft.padding.only(left=2), expand=1),
+                ft.Container(ctrl_unit, margin=0, padding=ft.Padding.only(left=2), expand=1),
                 ft.Container(ctrl_sum, margin=0, padding=0, expand=3),
-                ft.Container(ctrl_currency, margin=0, padding=ft.padding.only(right=2), expand=1)
+                ft.Container(ctrl_currency, margin=0, padding=ft.Padding.only(right=2), expand=1)
             ]
             exp = ft.ExpansionPanel(bgcolor = ft.Colors.GREEN_100,
                 header = ft.Container(ft.ListTile(

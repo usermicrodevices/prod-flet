@@ -129,4 +129,4 @@ class SettingsDialog(flet.CupertinoAlertDialog):
                 set_locale(self.translation_language.value, locale_dir=self.page.directory_locale)
             except Exception as e:
                 self.log(LE, [e])
-        self.page.pop_dialog(evt.control.parent)
+        self.page.pop_dialog()#evt.control.parent
