@@ -28,7 +28,7 @@ from ui.dialog_products import ProductsDialog
 from ui.dialog_documents import DocumentsDialog
 from ui.dialog_customer import CustomerDialog
 from ui.control_basket import BasketControl
-from background_tasks import sync_products, sync_sales, sync_customers
+from background_tasks import sync_products, sync_sales, sync_customers, get_prefs_value
 
 if flet.utils.platform_utils.is_mobile() and platform.system() in ['Linux', 'Android']:
     from fletzxing import ScanSuccessEvent, FletZxing
@@ -101,7 +101,8 @@ async def main(page: flet.Page):
     page.update_status_ctrl = update_status_ctrl
 
     async def is_superuser():
-        return await preferences.get('user').get('is_superuser', False)
+        #return await preferences.get('user').get('is_superuser', False)
+        return (await get_prefs_value('user', dict, {'is_superuser':False})).get('is_superuser', False)
     page.is_superuser = is_superuser
 
     page.scan_img = None

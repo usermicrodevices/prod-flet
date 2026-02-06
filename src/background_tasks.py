@@ -98,9 +98,15 @@ async def get_prefs_value(key, tp, default = None):
     result = default
     value = await flet.SharedPreferences().get(key)
     try:
-        result = tp(value)
+        if tp in [list, set, dict]:
+            result = tp(eval(value))
+        else:
+            result = tp(value)
     except ValueError as e:
-        result = int(value.replace('"', ''))
+        if tp in [list, set, dict]:
+            result = tp(eval(value.replace('"', '')))
+        else:
+            result = tp(value.replace('"', ''))
     except Exception as e:
         logging.error(e)
     return result

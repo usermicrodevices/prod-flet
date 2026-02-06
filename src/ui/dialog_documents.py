@@ -53,8 +53,8 @@ class DocumentsDialog(ft.AlertDialog):
             self.content = ft.Column(controls=[
                 ft.Row([self.data_table]),
                 ft.Row([
-                        ft.ElevatedButton('Prev', on_click=self.handle_prev),
-                        ft.ElevatedButton('Next', on_click=self.handle_next)
+                        ft.Button('Prev', on_click=self.handle_prev),
+                        ft.Button('Next', on_click=self.handle_next)
                     ])
                 ]
             )

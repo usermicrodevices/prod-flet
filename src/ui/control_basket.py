@@ -142,7 +142,7 @@ class BasketControl(ft.ExpansionPanelList):
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
             sum_product = round(product['price']*new_counts, 2)
             ctrl_sum = ft.Text(str_price if new_counts == 1.0 else f'{sum_product}', text_align=ft.TextAlign.RIGHT, bgcolor=ft.Colors.GREEN_100, size=font_size, weight=ft.FontWeight.W_900)
-            if self.page.is_superuser():
+            if await self.page.is_superuser():
                 ctrl_price = ft.TextField(str_price,
                     content_padding=0,
                     text_size=font_size,
