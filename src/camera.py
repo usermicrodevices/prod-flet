@@ -207,7 +207,7 @@ class CameraMaster(ft.Image):
             # text = f'{qr_data} ({qr_type})'
             is_valid, qr_data = self.crypto_handler.validate_data(obj.data.decode("utf-8"))
             color = (0, 255, 0) if is_valid else (0, 0, 255)
-            text = f'({qr_data['name']})' if is_valid else f'(Invalid)'
+            text = f'({qr_data['name']})' if is_valid else '(Invalid)'
 
             object_to_return = {
                 'data': qr_data,

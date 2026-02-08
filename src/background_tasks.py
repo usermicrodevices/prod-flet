@@ -103,10 +103,11 @@ async def get_prefs_value(key, tp, default = None):
         else:
             result = tp(value)
     except ValueError as e:
+        logging.warning(f'{e}')
         if tp in [list, set, dict]:
             result = tp(eval(value.replace('"', '')))
         else:
             result = tp(value.replace('"', ''))
     except Exception as e:
-        logging.error(e)
+        logging.error(f'{e}')
     return result

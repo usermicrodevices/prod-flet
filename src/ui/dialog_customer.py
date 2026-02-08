@@ -106,7 +106,7 @@ class CustomerDialog(flet.CupertinoAlertDialog):
         if len(evt.data) < (ft.SharedPreferences().get('search_auto_min_count') or 2):
             self.search_close_autocompletes(evt.data)
         else:
-            customers, msg = self.page.db_conn.search_customers(evt.data, limit_expression=f' LIMIT {ft.SharedPreferences().get('search_auto_limit') or 1000}')
+            customers, msg = self.page.db_conn.search_customers(evt.data, limit_expression=f' LIMIT {ft.SharedPreferences().get("search_auto_limit") or 1000}')
             if customers:
                 self.page.update_status_ctrl({5:f'👨{len(customers)}'})
                 self.search_list_view.controls = [flet.ListTile(title=flet.Text(customer['name']), on_click=self.on_search, data=customer) for customer in customers]
