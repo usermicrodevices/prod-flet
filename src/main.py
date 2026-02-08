@@ -297,7 +297,7 @@ async def main(page: flet.Page):
         if len(evt.data) < (await preferences.get('search_auto_min_count') or 2):
             search_close_autocompletes(evt.data)
         else:
-            products, msg = page.db_conn.search_products(evt.data, limit_expression=f' LIMIT {await preferences.get('search_auto_limit') or 1000}')
+            products, msg = page.db_conn.search_products(evt.data, limit_expression=f' LIMIT {await preferences.get("search_auto_limit") or 1000}')
             if products:
                 update_status_ctrl({4:f'💬{len(products)}'})
                 search_lv.controls = [flet.ListTile(title=flet.Text(product['name']), on_click=lambda evt: basket_add_product(evt.control.data), data=product) for product in products]

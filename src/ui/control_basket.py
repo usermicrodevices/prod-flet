@@ -136,7 +136,7 @@ class BasketControl(ft.ExpansionPanelList):
         else:
             font_size = await get_prefs_value('basket_font_size', int, 16)
             ctrl_count_from_server = ft.Text(product.get('count', '-'), text_align=ft.TextAlign.LEFT, bgcolor=ft.Colors.GREY_300, size=font_size)
-            str_price = f'{product['price']:.2f}'#.strip('0').strip('.')
+            str_price = f'{product["price"]:.2f}'#.strip('0').strip('.')
             if not str_price:
                 str_price = '0.0'
             ctrl_currency = ft.Text(product['currency']['name'], size=font_size-2)
