@@ -1,4 +1,4 @@
-import flet as ft
+import flet
 from log_tools import *
 from translation import _
 
@@ -18,13 +18,13 @@ else:
             VERSION = data['project']['version']
 
 
-class AboutDialog(ft.AlertDialog):
+class AboutDialog(flet.AlertDialog):
     def __init__(self, *args, **kwargs):
         global VERSION
-        page = kwargs.pop('page')
+        #page = kwargs.pop('page')
         super().__init__(*args, **kwargs)
         if not VERSION:
-            VERSION = page.version
+            VERSION = 'UNKNOWN'
         CONTENT = f'''{_("Version")} {VERSION}\n''' + \
             f'''Esc - {_("close any dialog")}\n''' + \
             f'''F1 - {_("this dialog")}\n''' + \
@@ -37,7 +37,7 @@ class AboutDialog(ft.AlertDialog):
             f'''F11 - {_("finish order customer")}\n''' + \
             f'''F12 - {_("finish sale")}\n''' + \
             f'''Ctrl+DEL - {_("clear products from basket")}\n''' + \
-            f'''(flet {_("version")} {ft.version.version})'''
+            f'''(flet {_("version")} {flet.version})'''
 
-        self.content = ft.Text(CONTENT)
-        self.actions = [ft.TextButton('close', on_click=lambda evt: page.pop_dialog())]#evt.control.parent
+        self.content = flet.Text(CONTENT)
+        self.actions = [flet.TextButton('close', on_click=lambda evt: self.page.pop_dialog())]#evt.control.parent

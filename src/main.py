@@ -11,7 +11,7 @@ from threading import current_thread
 
 import flet
 
-flet.context.disable_auto_update()
+#flet.context.disable_auto_update() # NOT USED FROM FLET 0.80.5
 
 try:
     import flet_permission_handler as fph
@@ -53,7 +53,7 @@ async def main(page: flet.Page):
     #await preferences.clear()
     logging.debug(f'🔑PREFERENCES.GET_KEYS {await preferences.get_keys("")} 🔑')
 
-    page.version = '1.1.1'
+    page.version = '1.1.2'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
     page.vertical_alignment = flet.MainAxisAlignment.CENTER
@@ -452,7 +452,8 @@ async def main(page: flet.Page):
         pagelet.end_drawer.open = False
         pagelet.end_drawer.update()
 
-    topbar = flet.CupertinoAppBar(
+    #topbar = flet.CupertinoAppBar(
+    topbar = flet.AppBar(
         #leading=flet.Icon(flet.icons.WB_SUNNY),
         #trailing=flet.Icon(flet.icons.WB_SUNNY_OUTLINED),
         #title=flet.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
@@ -505,7 +506,7 @@ async def main(page: flet.Page):
                 if page.customer_dialog:
                     page.customer_dialog = None
             case 'Enter':
-                if page.customer_dialog.open:
+                if page.customer_dialog and page.customer_dialog.open:
                     page.customer_dialog.send_data()
                     page.pop_dialog()
                     page.customer_dialog.open = False
@@ -519,11 +520,11 @@ async def main(page: flet.Page):
                 if evt.ctrl:
                     del page.basket.customer
                     page.update_status_ctrl({5:f'👨{page.basket.customer}'})
-                    if page.customer_dialog.open:
+                    if page.customer_dialog and page.customer_dialog.open:
                         page.pop_dialog()
                         page.customer_dialog.open = False
                 else:
-                    if not page.customer_dialog.open:
+                    if page.customer_dialog and not page.customer_dialog.open:
                         page.show_dialog(page.customer_dialog)
             case 'F3':
                 page.basket.focus_sum_final()
