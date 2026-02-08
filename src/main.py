@@ -5,9 +5,8 @@ argsparser.print_help()
 print('Sorry, but now "flet run" not support redirect application cli args\n\n')
 
 
-import asyncio, gettext, inspect, locale, os, platform, sys
+import asyncio, gettext, inspect, locale, os, platform, sys, threading
 from time import sleep
-from threading import current_thread
 
 import flet
 
@@ -119,9 +118,9 @@ async def main(page: flet.Page):
             update_status_ctrl({3:'📴'})
     page.scan_barcode_close = scan_barcode_close
 
-    def search_switch():
+    async def search_switch():
         if page.bar_search_products.on_change:
-            search_close_autocompletes()
+            await search_close_autocompletes()
             page.bar_search_products.on_change = None
             page.bar_search_products.on_tap = None
             update_status_ctrl({4:'🎮'})
@@ -162,7 +161,7 @@ async def main(page: flet.Page):
             else:
                 page.scan_barcode_close()
                 page.scan_img = None
-        search_switch()
+        await search_switch()
 
     page.db_conn = None
     page.http_conn = None
@@ -206,8 +205,16 @@ async def main(page: flet.Page):
         await sync_customers(page)
     page.run_task(after_page_loaded, page)
 
+    def start_background_loop(loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+    bg_loop = asyncio.new_event_loop()
+    bg_thread = threading.Thread(target=start_background_loop, args=(bg_loop,), daemon=True)
+    bg_thread.start()
+
     async def infinity_sync_cache():
-        self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
+        self_name = f'{threading.current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⏰ RUN {self_name}... ⏰')
         while True:
             sync_products_interval = 7200
@@ -231,10 +238,10 @@ async def main(page: flet.Page):
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC CUSTOMERS... ⏰♾⌛')
                 await sync_customers(page)
                 logging.debug(f'⌛♾ {self_name} SYNC CUSTOMERS FINISHED ♾⌛')
-    page.run_thread(infinity_sync_cache)
+    asyncio.run_coroutine_threadsafe(infinity_sync_cache(), bg_loop)
 
     async def infinity_sync_sales():
-        self_name = f'{current_thread().name}.{inspect.stack()[0][3]}'
+        self_name = f'{threading.current_thread().name}.{inspect.stack()[0][3]}'
         logging.debug(f'⌛⏰ RUN {self_name}... ⏰⌛')
         while True:
             sync_sales_interval = 300
@@ -259,7 +266,7 @@ async def main(page: flet.Page):
                 logging.debug(f'⌛♾⏰ {self_name} RUN SYNC SALES... ⏰♾⌛')
                 sync_sales(page)
                 logging.debug(f'⌛♾ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ♾⌛')
-    page.run_thread(infinity_sync_sales)
+    asyncio.run_coroutine_threadsafe(infinity_sync_sales(), bg_loop)
 
     def open_autocomplete(evt):
         page.bar_search_products.open_view()
@@ -412,6 +419,7 @@ async def main(page: flet.Page):
     )
 
     bottomappbar = flet.BottomAppBar(bottomappbar_content, bgcolor=flet.Colors.GREEN)#, shape=flet.NotchShape.CIRCULAR)
+    page.bottom_appbar = bottomappbar
 
     content_panel = flet.ListView(controls=[page.basket])
 
@@ -452,8 +460,8 @@ async def main(page: flet.Page):
         pagelet.end_drawer.open = False
         pagelet.end_drawer.update()
 
-    #topbar = flet.CupertinoAppBar(
-    topbar = flet.AppBar(
+    #topbar = flet.AppBar(
+    topbar = flet.CupertinoAppBar(
         #leading=flet.Icon(flet.icons.WB_SUNNY),
         #trailing=flet.Icon(flet.icons.WB_SUNNY_OUTLINED),
         #title=flet.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
@@ -464,30 +472,36 @@ async def main(page: flet.Page):
             page.basket.sum_final,
             flet.IconButton(icon=flet.Icons.POINT_OF_SALE, on_click=basket_sale)
             ]),
+        #automatic_background_visibility=False,
         bgcolor=flet.Colors.GREEN_100)
+    page.appbar = topbar
+
+    navigation_drawer=flet.NavigationDrawer(
+        on_dismiss=handle_dismiss_navigation_drawer,
+        on_change=handle_change_navigation_drawer,
+        controls=[
+            flet.NavigationDrawerDestination(icon=flet.Icons.LOCAL_SHIPPING, label='🚚'),
+            flet.NavigationDrawerDestination(icon=flet.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
+            flet.NavigationDrawerDestination(icon=flet.Icons.ADD_COMMENT, label='➕'),
+            flet.NavigationDrawerDestination(icon=flet.Icons.LOCK_RESET, label='🔄'),
+            flet.NavigationDrawerDestination(icon=flet.Icons.ROUNDABOUT_LEFT, label='ℹ'),
+            flet.NavigationDrawerDestination(icon=flet.Icons.EXIT_TO_APP, label='🔚'),
+        ],
+    )
+    page.end_drawer = navigation_drawer
 
     pagelet = flet.Pagelet(
-        appbar=topbar,
+        #appbar=topbar,
+        #bottom_appbar=bottomappbar,
+        #end_drawer=navigation_drawer,
         content=content_panel,
         bgcolor=flet.Colors.WHITE,
-        bottom_appbar=bottomappbar,
-        end_drawer=flet.NavigationDrawer(
-            on_dismiss=handle_dismiss_navigation_drawer,
-            on_change=handle_change_navigation_drawer,
-            controls=[
-                flet.NavigationDrawerDestination(icon=flet.Icons.LOCAL_SHIPPING, label='🚚'),
-                flet.NavigationDrawerDestination(icon=flet.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
-                flet.NavigationDrawerDestination(icon=flet.Icons.ADD_COMMENT, label='➕'),
-                flet.NavigationDrawerDestination(icon=flet.Icons.LOCK_RESET, label='🔄'),
-                flet.NavigationDrawerDestination(icon=flet.Icons.ROUNDABOUT_LEFT, label='ℹ'),
-                flet.NavigationDrawerDestination(icon=flet.Icons.EXIT_TO_APP, label='🔚'),
-            ],
-        ),
         floating_action_button=flet.FloatingActionButton('SCAN', on_click=scan_barcode),
         floating_action_button_location=flet.FloatingActionButtonLocation.CENTER_DOCKED,
         height=page.window.height if page.window.height else 850
     )
     page.add(pagelet)
+    #pagelet.update()
 
     def page_resize(evt):#not worked on android
         logging.debug(evt)
@@ -497,7 +511,7 @@ async def main(page: flet.Page):
             page.update()
     page.on_resized = page_resize
 
-    def on_custom_keyboard(evt: flet.KeyboardEvent):
+    async def on_custom_keyboard(evt: flet.KeyboardEvent):
         match evt.key:
             case 'Escape':
                 if alert_dlg.open:
@@ -531,7 +545,7 @@ async def main(page: flet.Page):
             case 'F4':
                 page.basket.focus_count()
             case 'F5':
-                search_switch()
+                await search_switch()
             case 'F10':
                 basket_order()
             case 'F11':
