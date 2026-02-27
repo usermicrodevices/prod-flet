@@ -38,7 +38,8 @@ class AboutDialog(flet.AlertDialog):
             f'''F11 - {_("finish order customer")}\n''' + \
             f'''F12 - {_("finish sale")}\n''' + \
             f'''Ctrl+DEL - {_("clear products from basket")}\n''' + \
-            f'''(flet {_("version")} {flet.version})'''
+            f'''(Flet {_("version")} {flet.__version__})\n''' + \
+            f'''(Flutter {_("version")} {flet.version.flutter_version})'''
 
         self.content = flet.Text(CONTENT)
         self.actions = [flet.TextButton('close', on_click=lambda evt: self.page.pop_dialog())]#evt.control.parent

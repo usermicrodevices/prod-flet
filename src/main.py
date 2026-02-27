@@ -22,7 +22,7 @@ from hardware import mer328ac
 from http_connector import HttpConnector
 from db_connector import DbConnector
 from ui.dialog_about import AboutDialog
-from ui.dialog_settings import SettingsDialog
+from ui.dialog_settings import run_settings_dialog
 from ui.dialog_products import ProductsDialog
 from ui.dialog_documents import DocumentsDialog
 from ui.dialog_customer import CustomerDialog
@@ -431,10 +431,11 @@ async def main(page: flet.Page):
         if evt.control.selected_index == 0:
             basket_order()
         elif evt.control.selected_index == 1:
-            page.settings_dialog = await SettingsDialog()
-            page.show_dialog(page.settings_dialog)
+            page.settings_dialog = await run_settings_dialog(page)
         elif evt.control.selected_index == 2:
-            #page.products_dialog = ProductsDialog()
+            if not page.products_dialog:
+                page.products_dialog = ProductsDialog(modal=True, db_conn=page.db_conn, control_basket=basket)
+                page.add(page.products_dialog)
             page.show_dialog(page.products_dialog)
         elif evt.control.selected_index == 3:
             if not page.sync_products_running:
