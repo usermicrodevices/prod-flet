@@ -26,6 +26,7 @@ class Caption(ft.DataColumn):
 class ProductsDialog(ft.AlertDialog):
     def __init__(self, *args, **kwargs):
         db_conn = kwargs.pop('db_conn')
+        self.control_basket = kwargs.pop('control_basket')
         super().__init__(*args, **kwargs)
         self.title = ft.Text('products')
         self.limit = 10
@@ -72,7 +73,7 @@ class ProductsDialog(ft.AlertDialog):
     async def on_select(self, evt):
         logging.debug(['ON_SELECT', evt.data, evt.control.data])
         if evt.control.data:
-            await self.page.basket.add(evt.control.data)
+            await self.control_basket.add(evt.control.data)
         self.page.pop_dialog()#self
 
     def handle_action_click(self, evt):
