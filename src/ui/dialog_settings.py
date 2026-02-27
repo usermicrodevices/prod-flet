@@ -5,8 +5,6 @@ from background_tasks import sync_products
 from translation import set_locale
 
 
-preferences = flet.SharedPreferences()
-
 
 class FloatNumbersOnlyInputFilter(flet.InputFilter):
     def __init__(self):
@@ -24,9 +22,11 @@ class SettingsDialogAction(flet.CupertinoDialogAction):
 
 
 class SettingsDialog(flet.CupertinoAlertDialog):
-    async def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        #self.title = flet.TextField('Settings Dialog')
+
+    async def init_async(self):
+
+        preferences = flet.SharedPreferences()
+
         self.protocol = flet.TextField(hint_text='protocol', label='protocol', expand=True, value=await preferences.get('protocol'))
         self.host = flet.TextField(hint_text='host', label='host', expand=True, value=await preferences.get('host'))
         self.port = flet.TextField(hint_text='port', label='port', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=await preferences.get('port'))
@@ -55,6 +55,19 @@ class SettingsDialog(flet.CupertinoAlertDialog):
             useinternalscanner = True
         self.use_internal_scanner = flet.Checkbox(label='use internal scanner', expand=True, value=useinternalscanner)
         self.translation_language = flet.TextField(label='translation language', expand=True, value=await preferences.get('translation_language') or locale.getlocale())
+        return self
+
+    def __await__(self):
+        return self.init_async().__await__()
+
+    async def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        await instance.init_async(*args, **kwargs)
+        return instance
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        #self.title = flet.TextField('Settings Dialog')
         self.content = flet.Column(controls=[
             flet.Row([self.protocol, self.port]),
             flet.Row([self.host]),
@@ -91,6 +104,7 @@ class SettingsDialog(flet.CupertinoAlertDialog):
 
     async def handle_action_click(self, evt):
         if evt.control.is_ok:
+            preferences = flet.SharedPreferences()
             await preferences.set('protocol', self.protocol.value)
             await preferences.set('host', self.host.value)
             await preferences.set('port', self.port.value)

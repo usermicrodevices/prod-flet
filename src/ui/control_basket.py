@@ -28,6 +28,7 @@ class BasketControl(ft.ExpansionPanelList):
     def __init__(self, *args, **kwargs):
         #self.page = kwargs.pop('page')
         #kwargs['on_change'] = self.handle_change_expansion_panel_item
+        self.search_bar_products = kwargs.pop('search_bar_products')
         if 'data' not in kwargs:
             kwargs['data'] = {'customer': {'id':None, 'name':'', 'extinfo':{}}}
         elif 'customer' not in kwargs['data']:
@@ -69,7 +70,7 @@ class BasketControl(ft.ExpansionPanelList):
         del self.customer
         self.page.update_status_ctrl({5:'👨'}, False)
         self.page.update()
-        self.page.bar_search_products.focus()
+        self.search_bar_products.focus()
 
     def sum_final_refresh(self):
         self.page.scan_barcode_close()
@@ -234,7 +235,7 @@ class BasketControl(ft.ExpansionPanelList):
             except Exception as e:
                 self.log(LE, [e])
         else:
-            self.page.bar_search_products.focus()
+            self.search_bar_products.focus()
 
     def focus_count(self, index=0):
         if self.page.is_search_bar_focused and self.controls:
@@ -243,4 +244,4 @@ class BasketControl(ft.ExpansionPanelList):
             except Exception as e:
                 self.log(LE, [e])
         else:
-            self.page.bar_search_products.focus()
+            self.search_bar_products.focus()

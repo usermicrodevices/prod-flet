@@ -121,15 +121,15 @@ async def main(page: flet.Page):
     page.scan_barcode_close = scan_barcode_close
 
     async def search_switch():
-        if page.bar_search_products.on_change:
+        if bar_search_products.on_change:
             await search_close_autocompletes()
-            page.bar_search_products.on_change = None
-            page.bar_search_products.on_tap = None
+            bar_search_products.on_change = None
+            bar_search_products.on_tap = None
             update_status_ctrl({4:'🎮'})
         else:
-            page.bar_search_products.on_change = on_search_change
-            page.bar_search_products.on_tap = open_autocomplete
-            page.bar_search_products.update()
+            bar_search_products.on_change = on_search_change
+            bar_search_products.on_tap = open_autocomplete
+            bar_search_products.update()
             update_status_ctrl({4:'💬'})
 
     async def scan_barcode(evt: flet.ControlEvent):
@@ -273,10 +273,10 @@ async def main(page: flet.Page):
     asyncio.run_coroutine_threadsafe(infinity_sync_sales(), bg_loop)
 
     def open_autocomplete(evt):
-        page.bar_search_products.open_view()
+        bar_search_products.open_view()
 
     async def close_autocomplete(evt):
-        await page.bar_search_products.close_view()
+        await bar_search_products.close_view()
 
     def on_search(evt: flet.ControlEvent):
         if evt.control.value:
@@ -291,11 +291,11 @@ async def main(page: flet.Page):
         if search_lv.controls:
             search_lv.controls = []
             if not only_clear:
-                await page.bar_search_products.close_view()
+                await bar_search_products.close_view()
             if value:
-                page.bar_search_products.value = value
+                bar_search_products.value = value
             update_status_ctrl({4:'💬'})
-            page.bar_search_products.update()
+            bar_search_products.update()
 
     async def on_search_change(evt):
         if len(evt.data) < (await preferences.get('search_auto_min_count') or 2):
@@ -305,8 +305,8 @@ async def main(page: flet.Page):
             if products:
                 update_status_ctrl({4:f'💬{len(products)}'})
                 search_lv.controls = [flet.ListTile(title=flet.Text(product['name']), on_click=lambda evt: basket_add_product(evt.control.data), data=product) for product in products]
-                page.bar_search_products.open_view()
-                page.bar_search_products.update()
+                bar_search_products.open_view()
+                bar_search_products.update()
             else:
                 search_close_autocompletes(evt.data, True)
 
@@ -314,7 +314,7 @@ async def main(page: flet.Page):
     def on_focus_search_bar(evt):
         page.is_search_bar_focused = True
 
-    page.bar_search_products = flet.SearchBar(bar_hint_text='Search products...',
+    bar_search_products = flet.SearchBar(bar_hint_text='Search products...',
         tooltip = 'Search products in local base',
         on_submit = on_search,
         on_tap = open_autocomplete,
@@ -330,7 +330,8 @@ async def main(page: flet.Page):
         expand_icon_color = flet.Colors.GREEN,
         elevation = 4,
         divider_color=flet.Colors.GREEN,
-        spacing = 0
+        spacing = 0,
+        search_bar_products=bar_search_products
     )
     #page.add(basket)
 
@@ -430,7 +431,7 @@ async def main(page: flet.Page):
         if evt.control.selected_index == 0:
             basket_order()
         elif evt.control.selected_index == 1:
-            page.settings_dialog = SettingsDialog()
+            page.settings_dialog = await SettingsDialog()
             page.show_dialog(page.settings_dialog)
         elif evt.control.selected_index == 2:
             #page.products_dialog = ProductsDialog()
@@ -446,14 +447,19 @@ async def main(page: flet.Page):
             page.about_dialog = AboutDialog()
             page.show_dialog(page.about_dialog)
         elif evt.control.selected_index == 5:
-            await preferences.set('user', {})
+            await preferences.set('user', '{}')
             if page.platform == 'android':
                 import os
                 os._exit(0)
             else:
-                page.window.close()
+                await page.window.close()
         #pagelet.end_drawer.open = False
         #pagelet.end_drawer.update()
+
+    # async def handle_show_end_drawer():#evt: flet.Event[flet.Button]):
+    #     await pagelet.show_end_drawer()
+    #     #await asyncio.sleep(3)
+    #     #await pagelet.close_end_drawer()
 
     navigation_drawer=flet.NavigationDrawer(
         on_dismiss=handle_dismiss_navigation_drawer,
@@ -469,13 +475,24 @@ async def main(page: flet.Page):
     )
     #page.end_drawer = navigation_drawer
 
+    # navbar = flet.CupertinoNavigationBar(
+    #     destinations=[
+    #         flet.NavigationBarDestination(icon=flet.Icons.LOCAL_SHIPPING, label='🚚'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.ADD_COMMENT, label='➕'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.LOCK_RESET, label='🔄'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.ROUNDABOUT_LEFT, label='ℹ'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.EXIT_TO_APP, label='🔚'),
+    #     ]
+    # )
+
     #topbar = flet.AppBar(
     topbar = flet.CupertinoAppBar(
         #leading=flet.Icon(flet.icons.WB_SUNNY),
         #trailing=flet.Icon(flet.icons.WB_SUNNY_OUTLINED),
         #title=flet.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
         title=flet.Row([
-            page.bar_search_products,
+            bar_search_products,
             #flet.IconButton(icon=flet.Icons.LOCAL_SHIPPING, on_click=basket_order),
             flet.IconButton(icon=flet.Icons.SHOPPING_BASKET, on_click=basket_order_customer),
             basket.sum_final,
@@ -501,8 +518,8 @@ async def main(page: flet.Page):
     pagelet = flet.Pagelet(
         appbar=topbar,
         bottom_appbar=bottomappbar,
-        drawer=navigation_drawer,
-        #end_drawer=navigation_drawer,
+        #navigation_bar=navbar,
+        end_drawer=navigation_drawer,
         content=content_panel,
         bgcolor=flet.Colors.WHITE,
         floating_action_button=flet.FloatingActionButton('SCAN', on_click=scan_barcode),
@@ -554,6 +571,8 @@ async def main(page: flet.Page):
                 basket.focus_count()
             case 'F5':
                 await search_switch()
+            case 'F9':
+                await pagelet.show_end_drawer()
             case 'F10':
                 basket_order()
             case 'F11':
