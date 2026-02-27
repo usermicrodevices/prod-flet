@@ -22,7 +22,7 @@ from hardware import mer328ac
 from http_connector import HttpConnector
 from db_connector import DbConnector
 from ui.dialog_about import AboutDialog
-from ui.dialog_settings import SettingsDialog
+from ui.dialog_settings import run_settings_dialog
 from ui.dialog_products import ProductsDialog
 from ui.dialog_documents import DocumentsDialog
 from ui.dialog_customer import CustomerDialog
@@ -88,15 +88,15 @@ async def main(page: flet.Page):
         flet.Text(size=size_status_text, value='📴'),
         flet.Text(size=size_status_text, value='💬'),
         flet.Text(size=size_status_text, value='👨')]
-    page.status_ctrl = flet.GridView(controls=ctrls, max_extent=size_status_text*1.2)
-    page.add(page.status_ctrl)
+    status_ctrl = flet.GridView(controls=ctrls, max_extent=size_status_text*1.2)
+    #page.add(status_ctrl)
 
     def update_status_ctrl(statuses={}, redraw=True):
         if statuses:
             for k,v in statuses.items():
-                page.status_ctrl.controls[k].value = v
+                status_ctrl.controls[k].value = v
             if redraw:
-                page.status_ctrl.update()
+                status_ctrl.update()
     page.update_status_ctrl = update_status_ctrl
 
     async def is_superuser():
@@ -109,6 +109,8 @@ async def main(page: flet.Page):
         if page.scan_img in content_panel.controls:
             content_panel.controls.remove(page.scan_img)
             content_panel.update()
+        #if page.scan_img in page.controls:
+            #page.controls.remove(page.scan_img)
         if page.scan_img:
             if hasattr(page.scan_img, 'content'):
                 page.scan_img.content = None
@@ -119,15 +121,15 @@ async def main(page: flet.Page):
     page.scan_barcode_close = scan_barcode_close
 
     async def search_switch():
-        if page.bar_search_products.on_change:
+        if bar_search_products.on_change:
             await search_close_autocompletes()
-            page.bar_search_products.on_change = None
-            page.bar_search_products.on_tap = None
+            bar_search_products.on_change = None
+            bar_search_products.on_tap = None
             update_status_ctrl({4:'🎮'})
         else:
-            page.bar_search_products.on_change = on_search_change
-            page.bar_search_products.on_tap = open_autocomplete
-            page.bar_search_products.update()
+            bar_search_products.on_change = on_search_change
+            bar_search_products.on_tap = open_autocomplete
+            bar_search_products.update()
             update_status_ctrl({4:'💬'})
 
     async def scan_barcode(evt: flet.ControlEvent):
@@ -150,6 +152,7 @@ async def main(page: flet.Page):
                     update_status_ctrl({3:'🎦'})
                     content_panel.controls.insert(0, page.scan_img)
                     content_panel.update()
+                    #page.controls.insert(0, page.scan_img)
                 else:
                     page.scan_img = CameraMaster(reader_callback=product_add, width=320, height=240, expand=True)
                     if not page.scan_img.cap:
@@ -158,6 +161,7 @@ async def main(page: flet.Page):
                         update_status_ctrl({3:'🎦'})
                         content_panel.controls.insert(0, page.scan_img)
                         content_panel.update()
+                        #page.controls.insert(0, page.scan_img)
             else:
                 page.scan_barcode_close()
                 page.scan_img = None
@@ -269,10 +273,10 @@ async def main(page: flet.Page):
     asyncio.run_coroutine_threadsafe(infinity_sync_sales(), bg_loop)
 
     def open_autocomplete(evt):
-        page.bar_search_products.open_view()
+        bar_search_products.open_view()
 
     async def close_autocomplete(evt):
-        await page.bar_search_products.close_view()
+        await bar_search_products.close_view()
 
     def on_search(evt: flet.ControlEvent):
         if evt.control.value:
@@ -287,11 +291,11 @@ async def main(page: flet.Page):
         if search_lv.controls:
             search_lv.controls = []
             if not only_clear:
-                await page.bar_search_products.close_view()
+                await bar_search_products.close_view()
             if value:
-                page.bar_search_products.value = value
+                bar_search_products.value = value
             update_status_ctrl({4:'💬'})
-            page.bar_search_products.update()
+            bar_search_products.update()
 
     async def on_search_change(evt):
         if len(evt.data) < (await preferences.get('search_auto_min_count') or 2):
@@ -301,8 +305,8 @@ async def main(page: flet.Page):
             if products:
                 update_status_ctrl({4:f'💬{len(products)}'})
                 search_lv.controls = [flet.ListTile(title=flet.Text(product['name']), on_click=lambda evt: basket_add_product(evt.control.data), data=product) for product in products]
-                page.bar_search_products.open_view()
-                page.bar_search_products.update()
+                bar_search_products.open_view()
+                bar_search_products.update()
             else:
                 search_close_autocompletes(evt.data, True)
 
@@ -310,7 +314,7 @@ async def main(page: flet.Page):
     def on_focus_search_bar(evt):
         page.is_search_bar_focused = True
 
-    page.bar_search_products = flet.SearchBar(bar_hint_text='Search products...',
+    bar_search_products = flet.SearchBar(bar_hint_text='Search products...',
         tooltip = 'Search products in local base',
         on_submit = on_search,
         on_tap = open_autocomplete,
@@ -322,14 +326,16 @@ async def main(page: flet.Page):
         on_focus = on_focus_search_bar
     )
 
-    page.basket = BasketControl(
+    basket = BasketControl(
         expand_icon_color = flet.Colors.GREEN,
         elevation = 4,
         divider_color=flet.Colors.GREEN,
-        spacing = 0
+        spacing = 0,
+        search_bar_products=bar_search_products
     )
+    #page.add(basket)
 
-    page.customer_dialog = CustomerDialog(modal=True)
+    page.customer_dialog = CustomerDialog(modal=True, control_basket=basket)
     page.add(page.customer_dialog)
 
     async def basket_order_customer(evt: flet.ControlEvent = None):
@@ -339,8 +345,8 @@ async def main(page: flet.Page):
             if not page.customer_dialog.open:
                 page.show_dialog(page.customer_dialog)
         else:
-            if len(page.basket.controls):
-                page.run_thread(page.basket.send_data, 'order_customer')
+            if len(basket.controls):
+                page.run_thread(basket.send_data, 'order_customer')
 
     async def basket_sale(evt: flet.ControlEvent = None):
         if await preferences.get('use_sale_customer_dialog'):
@@ -349,21 +355,21 @@ async def main(page: flet.Page):
             if not page.customer_dialog.open:
                 page.show_dialog(page.customer_dialog)
         else:
-            if len(page.basket.controls):
-                page.run_thread(page.basket.send_data)
+            if len(basket.controls):
+                page.run_thread(basket.send_data)
 
     def basket_order(evt: flet.ControlEvent = None):
         if page.customer_dialog:
             if page.customer_dialog.open:
                 page.pop_dialog()
             page.customer_dialog.open = False
-        if len(page.basket.controls):
-            page.run_thread(page.basket.send_data, 'order')
+        if len(basket.controls):
+            page.run_thread(basket.send_data, 'order')
 
     async def basket_add_product(product: dict):
         headers, prod = page.http_conn.get_product(product['id'], network_timeout=await preferences.get('network_timeout_get_product') or .1)
         product['count'] = '-' if not prod else prod['count']
-        await page.basket.add(product)
+        await basket.add(product)
         search_close_autocompletes()
 
     def product_search(code: str):
@@ -386,15 +392,15 @@ async def main(page: flet.Page):
 
     def on_click_pagelet(evt: flet.ControlEvent):
         logging.debug(f'ON_CLICK_PAGELET {evt.control.parent}')
-        pagelet.appbar = None
-        pagelet.end_drawer.open = True
-        pagelet.end_drawer.update()
+        #pagelet.appbar = None
+        #pagelet.end_drawer.open = True
+        #pagelet.end_drawer.update()
         page.update()
 
     page.products_dialog = None
     def open_poducts(evt: flet.ControlEvent):
         if not page.products_dialog:
-            page.products_dialog = ProductsDialog(modal=True, db_conn=page.db_conn)
+            page.products_dialog = ProductsDialog(modal=True, db_conn=page.db_conn, control_basket=basket)
             page.add(page.products_dialog)
         page.show_dialog(page.products_dialog)
 
@@ -406,28 +412,18 @@ async def main(page: flet.Page):
         page.show_dialog(page.documents_dialog)
 
     def basket_clear(evt: flet.ControlEvent):
-        page.basket.clearing()
+        if basket:
+            basket.clearing()
 
-    bottomappbar_content = flet.Row(
-        controls=[
-            flet.IconButton(icon_size=20, icon=flet.Icons.MENU, icon_color=flet.Colors.WHITE, on_click=on_click_pagelet),
-            flet.Container(page.status_ctrl, expand=True),
-            flet.IconButton(icon_size=20, icon=flet.Icons.PRINT, icon_color=flet.Colors.WHITE, on_click=open_documents),
-            flet.IconButton(icon_size=20, icon=flet.Icons.ADD, on_click=open_poducts),
-            flet.IconButton(icon_size=20, icon=flet.Icons.DELETE, on_click=basket_clear)
-        ]
-    )
-
-    bottomappbar = flet.BottomAppBar(bottomappbar_content, bgcolor=flet.Colors.GREEN)#, shape=flet.NotchShape.CIRCULAR)
-    page.bottom_appbar = bottomappbar
-
-    content_panel = flet.ListView(controls=[page.basket])
+    content_panel = flet.ListView(controls=[basket])
+    #page.add(content_panel)
+    #page.controls = [content_panel]
 
     logging.debug(f'w={page.window.width:.2f}; h={page.window.height:.2f}; {page.client_ip}; {page.client_user_agent}; {page.pwa}')
 
     def handle_dismiss_navigation_drawer(evt: flet.ControlEvent):
         logging.debug(f'DISMISS {evt.control}')
-        pagelet.appbar = topbar
+        #pagelet.appbar = topbar
         page.update()
 
     async def handle_change_navigation_drawer(evt: flet.ControlEvent):
@@ -435,10 +431,11 @@ async def main(page: flet.Page):
         if evt.control.selected_index == 0:
             basket_order()
         elif evt.control.selected_index == 1:
-            page.settings_dialog = SettingsDialog()
-            page.show_dialog(page.settings_dialog)
+            page.settings_dialog = await run_settings_dialog(page)
         elif evt.control.selected_index == 2:
-            #page.products_dialog = ProductsDialog()
+            if not page.products_dialog:
+                page.products_dialog = ProductsDialog(modal=True, db_conn=page.db_conn, control_basket=basket)
+                page.add(page.products_dialog)
             page.show_dialog(page.products_dialog)
         elif evt.control.selected_index == 3:
             if not page.sync_products_running:
@@ -451,30 +448,19 @@ async def main(page: flet.Page):
             page.about_dialog = AboutDialog()
             page.show_dialog(page.about_dialog)
         elif evt.control.selected_index == 5:
-            await preferences.set('user', {})
+            await preferences.set('user', '{}')
             if page.platform == 'android':
                 import os
                 os._exit(0)
             else:
-                page.window.close()
-        pagelet.end_drawer.open = False
-        pagelet.end_drawer.update()
+                await page.window.close()
+        #pagelet.end_drawer.open = False
+        #pagelet.end_drawer.update()
 
-    #topbar = flet.AppBar(
-    topbar = flet.CupertinoAppBar(
-        #leading=flet.Icon(flet.icons.WB_SUNNY),
-        #trailing=flet.Icon(flet.icons.WB_SUNNY_OUTLINED),
-        #title=flet.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
-        title=flet.Row([
-            page.bar_search_products,
-            #flet.IconButton(icon=flet.Icons.LOCAL_SHIPPING, on_click=basket_order),
-            flet.IconButton(icon=flet.Icons.SHOPPING_BASKET, on_click=basket_order_customer),
-            page.basket.sum_final,
-            flet.IconButton(icon=flet.Icons.POINT_OF_SALE, on_click=basket_sale)
-            ]),
-        #automatic_background_visibility=False,
-        bgcolor=flet.Colors.GREEN_100)
-    page.appbar = topbar
+    # async def handle_show_end_drawer():#evt: flet.Event[flet.Button]):
+    #     await pagelet.show_end_drawer()
+    #     #await asyncio.sleep(3)
+    #     #await pagelet.close_end_drawer()
 
     navigation_drawer=flet.NavigationDrawer(
         on_dismiss=handle_dismiss_navigation_drawer,
@@ -488,12 +474,53 @@ async def main(page: flet.Page):
             flet.NavigationDrawerDestination(icon=flet.Icons.EXIT_TO_APP, label='🔚'),
         ],
     )
-    page.end_drawer = navigation_drawer
+    #page.end_drawer = navigation_drawer
+
+    # navbar = flet.CupertinoNavigationBar(
+    #     destinations=[
+    #         flet.NavigationBarDestination(icon=flet.Icons.LOCAL_SHIPPING, label='🚚'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.ADD_TO_HOME_SCREEN_SHARP, label='🏠'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.ADD_COMMENT, label='➕'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.LOCK_RESET, label='🔄'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.ROUNDABOUT_LEFT, label='ℹ'),
+    #         flet.NavigationBarDestination(icon=flet.Icons.EXIT_TO_APP, label='🔚'),
+    #     ]
+    # )
+
+    #topbar = flet.AppBar(
+    topbar = flet.CupertinoAppBar(
+        #leading=flet.Icon(flet.icons.WB_SUNNY),
+        #trailing=flet.Icon(flet.icons.WB_SUNNY_OUTLINED),
+        #title=flet.SearchBar(bar_hint_text="Search ...", on_submit=on_search),
+        title=flet.Row([
+            bar_search_products,
+            #flet.IconButton(icon=flet.Icons.LOCAL_SHIPPING, on_click=basket_order),
+            flet.IconButton(icon=flet.Icons.SHOPPING_BASKET, on_click=basket_order_customer),
+            basket.sum_final,
+            flet.IconButton(icon=flet.Icons.POINT_OF_SALE, on_click=basket_sale)
+            ]),
+        #automatic_background_visibility=False,
+        bgcolor=flet.Colors.GREEN_100)
+    #page.appbar = topbar
+
+    bottomappbar_content = flet.Row(
+        controls=[
+            flet.IconButton(icon_size=20, icon=flet.Icons.MENU, icon_color=flet.Colors.WHITE, on_click=on_click_pagelet),
+            flet.Container(status_ctrl, expand=True),
+            flet.IconButton(icon_size=20, icon=flet.Icons.PRINT, icon_color=flet.Colors.WHITE, on_click=open_documents),
+            flet.IconButton(icon_size=20, icon=flet.Icons.ADD, on_click=open_poducts),
+            flet.IconButton(icon_size=20, icon=flet.Icons.DELETE, on_click=basket_clear)
+        ]
+    )
+
+    bottomappbar = flet.BottomAppBar(bottomappbar_content, bgcolor=flet.Colors.GREEN)#, shape=flet.NotchShape.CIRCULAR)
+    #page.bottom_appbar = bottomappbar
 
     pagelet = flet.Pagelet(
-        #appbar=topbar,
-        #bottom_appbar=bottomappbar,
-        #end_drawer=navigation_drawer,
+        appbar=topbar,
+        bottom_appbar=bottomappbar,
+        #navigation_bar=navbar,
+        end_drawer=navigation_drawer,
         content=content_panel,
         bgcolor=flet.Colors.WHITE,
         floating_action_button=flet.FloatingActionButton('SCAN', on_click=scan_barcode),
@@ -501,15 +528,14 @@ async def main(page: flet.Page):
         height=page.window.height if page.window.height else 850
     )
     page.add(pagelet)
-    #pagelet.update()
 
-    def page_resize(evt):#not worked on android
+    def page_resize(evt):
         logging.debug(evt)
-        logging.debug(f'PAGE_RESIZE: w={evt.width}; h={evt.height}; {page.pwa}')
+        logging.debug(f'↕️PAGE_RESIZE↔️: w={evt.width}; h={evt.height}; {page.pwa}')
         if evt.height:
             pagelet.height = evt.height
-            page.update()
-    page.on_resized = page_resize
+            pagelet.update()
+    page.on_resize = page_resize
 
     async def on_custom_keyboard(evt: flet.KeyboardEvent):
         match evt.key:
@@ -526,14 +552,14 @@ async def main(page: flet.Page):
                     page.customer_dialog.open = False
             case 'Delete':
                 if evt.ctrl:
-                    page.basket.clearing()
+                    basket.clearing()
             case 'F1':
                 page.about_dialog = AboutDialog()
                 page.show_dialog(page.about_dialog)
             case 'F2':
                 if evt.ctrl:
-                    del page.basket.customer
-                    page.update_status_ctrl({5:f'👨{page.basket.customer}'})
+                    del basket.customer
+                    page.update_status_ctrl({5:f'👨{basket.customer}'})
                     if page.customer_dialog and page.customer_dialog.open:
                         page.pop_dialog()
                         page.customer_dialog.open = False
@@ -541,11 +567,13 @@ async def main(page: flet.Page):
                     if page.customer_dialog and not page.customer_dialog.open:
                         page.show_dialog(page.customer_dialog)
             case 'F3':
-                page.basket.focus_sum_final()
+                basket.focus_sum_final()
             case 'F4':
-                page.basket.focus_count()
+                basket.focus_count()
             case 'F5':
                 await search_switch()
+            case 'F9':
+                await pagelet.show_end_drawer()
             case 'F10':
                 basket_order()
             case 'F11':
@@ -556,6 +584,8 @@ async def main(page: flet.Page):
 
     page.locale_configuration = flet.LocaleConfiguration([flet.Locale(language_code='en', country_code='US'), flet.Locale(language_code='ru', country_code='RU')])
 
+    page.spacing = 0
+    page.padding = 0
 
 #flet.run(main, port=8550, view=flet.AppView.WEB_BROWSER)
 flet.run(main)

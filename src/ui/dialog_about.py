@@ -33,11 +33,13 @@ class AboutDialog(flet.AlertDialog):
             f'''F3 - {_("switch between search and final sum")}\n''' + \
             f'''F4 - {_("switch between search and count last product")}\n''' + \
             f'''F5 - {_("switch between search and scanning")}\n''' + \
+            f'''F9 - {_("open navigation menu")}\n''' + \
             f'''F10 - {_("finish order provider")}\n''' + \
             f'''F11 - {_("finish order customer")}\n''' + \
             f'''F12 - {_("finish sale")}\n''' + \
             f'''Ctrl+DEL - {_("clear products from basket")}\n''' + \
-            f'''(flet {_("version")} {flet.version})'''
+            f'''(Flet {_("version")} {flet.__version__})\n''' + \
+            f'''(Flutter {_("version")} {flet.version.flutter_version})'''
 
         self.content = flet.Text(CONTENT)
         self.actions = [flet.TextButton('close', on_click=lambda evt: self.page.pop_dialog())]#evt.control.parent

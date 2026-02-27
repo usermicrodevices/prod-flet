@@ -16,6 +16,7 @@ class SettingsDialogAction(flet.CupertinoDialogAction):
 
 class CustomerDialog(flet.CupertinoAlertDialog):
     def __init__(self, *args, **kwargs):
+        self.control_basket = kwargs.pop('control_basket')
         self.doc_type = kwargs.pop('doc_type', '')
         super().__init__(*args, **kwargs)
         self.title = flet.Text('Select Customer Dialog')
@@ -68,12 +69,12 @@ class CustomerDialog(flet.CupertinoAlertDialog):
     def send_data(self):
         self.log(LD, ['🍪IS_OK🍪', self.customer_new.value])
         if self.customer_new.value:
-            self.page.basket.customer = self.customer_new.value
-            if self.page.http_conn.post_customer(self.page.basket.customer, 3):
+            self.control_basket.customer = self.customer_new.value
+            if self.page.http_conn.post_customer(self.control_basket.customer, 3):
                 self.page.run_thread(sync_customers, self.page)
-        self.page.update_status_ctrl({5:f'👨{self.page.basket.customer}'})
-        if self.doc_type and len(self.page.basket.controls):
-            self.page.run_thread(self.page.basket.send_data, self.doc_type)
+        self.page.update_status_ctrl({5:f'👨{self.control_basket.customer}'})
+        if self.doc_type and len(self.control_basket.controls):
+            self.page.run_thread(self.control_basket.send_data, self.doc_type)
 
     def open_autocomplete(self, evt):
         self.search_bar.open_view()
@@ -84,11 +85,11 @@ class CustomerDialog(flet.CupertinoAlertDialog):
     def on_search(self, evt: flet.ControlEvent):
         self.log(LD, ['👨', evt.control.data])
         if evt.control.data:
-            self.page.basket.data['customer'] = evt.control.data
-            self.page.update_status_ctrl({5:f'👨{self.page.basket.customer}'})
+            self.control_basket.data['customer'] = evt.control.data
+            self.page.update_status_ctrl({5:f'👨{self.control_basket.customer}'})
             self.search_bar.close_view()
             self.search_bar.focus()
-            self.search_bar.value = self.page.basket.customer
+            self.search_bar.value = self.control_basket.customer
             self.search_bar.update()
             #self.page.pop_dialog()#self
 
