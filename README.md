@@ -14,6 +14,10 @@ python -m venv venv
 . ./venv/bin/activate
 pip install .
 ```
+# upgrade venv (only if you need it)
+```
+pip install -U .
+```
 
 # fix ubuntu run missing dependencies
 ```
