@@ -577,9 +577,9 @@ async def main(page: flet.Page):
             case 'F10':
                 basket_order()
             case 'F11':
-                basket_order_customer()
+                await basket_order_customer()
             case 'F12':
-                basket_sale()
+                await basket_sale()
     page.on_keyboard_event = on_custom_keyboard
 
     page.locale_configuration = flet.LocaleConfiguration([flet.Locale(language_code='en', country_code='US'), flet.Locale(language_code='ru', country_code='RU')])
