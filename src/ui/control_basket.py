@@ -63,14 +63,14 @@ class BasketControl(ft.ExpansionPanelList):
     def update_status_count(self, redraw_ctrl=True):
         self.page.update_status_ctrl({1:f'🛒{len(self.controls)}'}, redraw_ctrl)
 
-    def clearing(self):
+    async def clearing(self):
         self.controls = []
         self.update_status_count(False)
         self.sum_final.value = '0.0'
         del self.customer
         self.page.update_status_ctrl({5:'👨'}, False)
         self.page.update()
-        self.search_bar_products.focus()
+        await self.search_bar_products.focus()
 
     def sum_final_refresh(self):
         self.page.scan_barcode_close()
@@ -228,20 +228,20 @@ class BasketControl(ft.ExpansionPanelList):
                     self.log(LW, [msg])
             self.clearing()
 
-    def focus_sum_final(self, index=0):
+    async def focus_sum_final(self, index=0):
         if self.page.is_search_bar_focused:
             try:
-                self.sum_final.focus()
+                await self.sum_final.focus()
             except Exception as e:
                 self.log(LE, [e])
         else:
-            self.search_bar_products.focus()
+            await self.search_bar_products.focus()
 
-    def focus_count(self, index=0):
+    async def focus_count(self, index=0):
         if self.page.is_search_bar_focused and self.controls:
             try:
-                self.controls[index].data['ctrl_count'].focus()
+                await self.controls[index].data['ctrl_count'].focus()
             except Exception as e:
                 self.log(LE, [e])
         else:
-            self.search_bar_products.focus()
+            await self.search_bar_products.focus()

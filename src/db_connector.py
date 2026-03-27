@@ -83,7 +83,7 @@ class DbConnector():
         for m in msgs:
             s += f'::{m}'
             if hasattr(m, '__traceback__'):
-                s += f'🇱🇮🇳🇪{m.__traceback__.tb_lineno}'
+                s += f'🚨{m.__traceback__.tb_lineno}'
         logging.log(lvl, s, *args, **kwargs)
 
     def drop_table(self, name):
