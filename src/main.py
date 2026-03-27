@@ -8,6 +8,17 @@ print('Sorry, but now "flet run" not support redirect application cli args\n\n')
 import asyncio, gettext, inspect, locale, os, platform, sys, threading
 from time import sleep
 
+from log_tools import *
+
+def log(self, lvl=LN, msgs=[], *args, **kwargs):
+    s = f'{LICONS[lvl]}::{__name__}.{self.__class__.__name__}.{sys._getframe().f_back.f_code.co_name}'
+    for m in msgs:
+        s += f'::{m}'
+        if hasattr(m, '__traceback__'):
+            s += f'🚨{m.__traceback__.tb_lineno}'
+    logging.log(lvl, s, *args, **kwargs)
+
+
 import flet
 
 #flet.context.disable_auto_update() # NOT USED FROM FLET 0.80.5
@@ -17,7 +28,6 @@ try:
 except:
     fph = None
 
-from log_tools import *
 from hardware import mer328ac
 from http_connector import HttpConnector
 from db_connector import DbConnector
@@ -37,7 +47,6 @@ elif not flet.utils.platform_utils.is_mobile():
 from translation import set_locale, _
 
 
-
 async def main(page: flet.Page):
 
     appargs = argsparser.parse_args()
@@ -52,7 +61,7 @@ async def main(page: flet.Page):
     #await preferences.clear()
     logging.debug(f'🔑PREFERENCES.GET_KEYS {await preferences.get_keys("")} 🔑')
 
-    page.version = '1.1.2'
+    page.version = '1.1.3'
     page.title = 'PROD-CLIENT'
     page.adaptive = True
     page.vertical_alignment = flet.MainAxisAlignment.CENTER
@@ -66,9 +75,16 @@ async def main(page: flet.Page):
     #page._ = gettext.Catalog('prod', page.directory_locale).gettext
 
     ph = None
-    if fph:
-        ph = fph.PermissionHandler()
-        page.overlay.append(ph)
+    # PermissionHandler is currently only supported on Android, iOS, Windows, and Web platforms
+    if fph and flet.utils.platform_utils.is_mobile():
+        try:
+            ph = fph.PermissionHandler()
+        except flet.controls.exceptions.FletUnsupportedPlatformException as e:
+            log(LW, [e])
+        except Exception as e:
+            log(LW, [e])
+        else:
+            page.overlay.append(ph)
 
     #alert_dlg = flet.AlertDialog(modal=True, actions=[flet.TextButton('ok', on_click=lambda e: page.pop_dialog(e.control.parent))])
     alert_dlg = flet.AlertDialog(modal=True, actions=[flet.TextButton('ok', on_click=lambda e: page.pop_dialog())])
@@ -411,9 +427,9 @@ async def main(page: flet.Page):
             page.add(page.documents_dialog)
         page.show_dialog(page.documents_dialog)
 
-    def basket_clear(evt: flet.ControlEvent):
+    async def basket_clear(evt: flet.ControlEvent):
         if basket:
-            basket.clearing()
+            await basket.clearing()
 
     content_panel = flet.ListView(controls=[basket])
     #page.add(content_panel)
@@ -552,7 +568,7 @@ async def main(page: flet.Page):
                     page.customer_dialog.open = False
             case 'Delete':
                 if evt.ctrl:
-                    basket.clearing()
+                    await basket.clearing()
             case 'F1':
                 page.about_dialog = AboutDialog()
                 page.show_dialog(page.about_dialog)
@@ -567,9 +583,9 @@ async def main(page: flet.Page):
                     if page.customer_dialog and not page.customer_dialog.open:
                         page.show_dialog(page.customer_dialog)
             case 'F3':
-                basket.focus_sum_final()
+                await basket.focus_sum_final()
             case 'F4':
-                basket.focus_count()
+                await basket.focus_count()
             case 'F5':
                 await search_switch()
             case 'F9':

@@ -5,12 +5,19 @@ try:
     #pip install opencv-python
     import cv2
 except:
-    pass
+    logging.warning('‼🚫 cv2 MODULE NOT FOUND 🚫‼')
+    logging.warning('‼🚫 IF YOU WANT USE CAMERA ON THIS PLATFORM, 🚫‼')
+    logging.warning('‼🚫 THEN YOU MUST INSTALL cv2 🚫‼')
+    class decode_simple:
+        def decode(img):
+            return '', False, ''
+else:
+    from third_party.EAN13_Reader import decode_simple
+
 #from PIL import Image#pip install pillow
 #from pyzbar import pyzbar#pip install pyzbar # but it required C-extension libzbar and not build with mobile platforms
 #from third_party.pyzbar import pyzbar#fixed version with C-extensions included
 #import zxingcpp
-from third_party.EAN13_Reader import decode_simple
 
 
 DEFAULT_BASE64 = 'R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
