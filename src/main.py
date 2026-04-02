@@ -288,8 +288,8 @@ async def main(page: flet.Page):
                 logging.debug(f'⌛♾ {self_name} SYNC SALES FINISHED, WAIT NEXT TIME INTERVAL ♾⌛')
     asyncio.run_coroutine_threadsafe(infinity_sync_sales(), bg_loop)
 
-    def open_autocomplete(evt):
-        bar_search_products.open_view()
+    async def open_autocomplete(evt):
+        await bar_search_products.open_view()
 
     async def close_autocomplete(evt):
         await bar_search_products.close_view()
