@@ -5,33 +5,34 @@ from background_tasks import sync_products
 from translation import set_locale
 
 async def run_settings_dialog(page):
+    page.pop_dialog()#close any last opened dialog
     preferences = flet.SharedPreferences()
     params = {
-        'protocol':await preferences.get('protocol'),
-        'host':await preferences.get('host'),
-        'port':await preferences.get('port'),
-        'login':await preferences.get('login'),
-        'password':await preferences.get('password'),
-        'network_timeout_get_product':await preferences.get('network_timeout_get_product') or .1,
+        'protocol':await preferences.get('protocol') or 'http',
+        'host':await preferences.get('host') or '127.0.0.1',
+        'port':await preferences.get('port') or 80,
+        'login':await preferences.get('login') or 'admin',
+        'password':await preferences.get('password') or 'aDmIn',
+        'network_timeout_get_product':await preferences.get('network_timeout_get_product') or 0.1,
         'db_file_name':await preferences.get('db_file_name') or 'prod.db',
         'sync_products_interval':await preferences.get('sync_products_interval') or '7200',
         'sync_sales_interval':await preferences.get('sync_sales_interval') or '300',
         'basket_font_size':await preferences.get('basket_font_size') or '16',
-        'scales_port':await preferences.get('scales_port'),
-        'scales_baud':await preferences.get('scales_baud'),
-        'scales_timeout':await preferences.get('scales_timeout'),
-        'scales_wait_read':await preferences.get('scales_wait_read'),
-        'scales_ratio':await preferences.get('scales_ratio'),
-        'scales_unit_ids':await preferences.get('scales_unit_ids'),
-        'search_auto_min_count':await preferences.get('search_auto_min_count'),
-        'search_auto_limit':await preferences.get('search_auto_limit'),
+        'scales_port':await preferences.get('scales_port') or '/dev/ttyS0',
+        'scales_baud':await preferences.get('scales_baud') or 9600,
+        'scales_timeout':await preferences.get('scales_timeout') or 0.5,
+        'scales_wait_read':await preferences.get('scales_wait_read') or 1,
+        'scales_ratio':await preferences.get('scales_ratio') or 1000,
+        'scales_unit_ids':await preferences.get('scales_unit_ids') or '1,2,3',
+        'search_auto_min_count':await preferences.get('search_auto_min_count') or 2,
+        'search_auto_limit':await preferences.get('search_auto_limit') or 1000,
         'use_order_customer_dialog':await preferences.get('use_order_customer_dialog'),
         'use_sale_customer_dialog':await preferences.get('use_sale_customer_dialog') or False,
         'use_internal_scanner':await preferences.get('use_internal_scanner'),
         'translation_language':await preferences.get('translation_language') or locale.getlocale()
     }
-    settings_dialog = SettingsDialog(**params)
-    page.show_dialog(settings_dialog)
+    page.settings_dialog = SettingsDialog(**params)
+    page.show_dialog(page.settings_dialog)
 
 
 class FloatNumbersOnlyInputFilter(flet.InputFilter):
@@ -52,24 +53,24 @@ class SettingsDialogAction(flet.CupertinoDialogAction):
 class SettingsDialog(flet.CupertinoAlertDialog):
 
     def __pre_init__(self, *args, **kwargs):
-        self.protocol = flet.TextField(hint_text='protocol', label='protocol', expand=True, value=kwargs.pop('protocol'))
-        self.host = flet.TextField(hint_text='host', label='host', expand=True, value=kwargs.pop('host'))
-        self.port = flet.TextField(hint_text='port', label='port', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('port'))
-        self.login = flet.TextField(hint_text='login', label='login', expand=True, value=kwargs.pop('login'))
-        self.password = flet.TextField(hint_text='password', label='password', password=True, can_reveal_password=True, expand=True, value=kwargs.pop('password'))
-        self.network_timeout_get_product = flet.TextField(hint_text='0.1', label='timeout get product seconds', input_filter=FloatNumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('network_timeout_get_product'))
-        self.db_file_name = flet.TextField(hint_text='db file name', label='db file name', expand=True, value=kwargs.pop('db_file_name'))
-        self.sync_products_interval = flet.TextField(hint_text='seconds', label='sync products interval', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('sync_products_interval'))
-        self.sync_sales_interval = flet.TextField(hint_text='seconds', label='sync sales interval', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('sync_sales_interval'))
-        self.basket_font_size = flet.TextField(hint_text='basket font size', label='basket font size', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('basket_font_size'))
-        self.scales_port = flet.TextField(hint_text='/dev/ttyS0', label='scales RS232', expand=True, value=kwargs.pop('scales_port'))
-        self.scales_baud = flet.TextField(hint_text='9600', label='scales baud', expand=True, value=kwargs.pop('scales_baud'))
-        self.scales_timeout = flet.TextField(hint_text='0.5', label='scales timeout', expand=True, value=kwargs.pop('scales_timeout'))
-        self.scales_wait_read = flet.TextField(hint_text='1', label='scales wait', expand=True, value=kwargs.pop('scales_wait_read'))
-        self.scales_ratio = flet.TextField(hint_text='1000', label='ratio', expand=True, value=kwargs.pop('scales_ratio'))
-        self.scales_unit_ids = flet.TextField(hint_text='1,2,3', label='units', expand=True, value=kwargs.pop('scales_unit_ids'))
-        self.search_auto_min_count = flet.TextField(hint_text='2', label='🔍 min', expand=True, value=kwargs.pop('search_auto_min_count'))
-        self.search_auto_limit = flet.TextField(hint_text='1000', label='🔍 limit', expand=True, value=kwargs.pop('search_auto_limit'))
+        self.protocol = flet.TextField(hint_text='protocol', label='protocol', expand=True, value=kwargs.pop('protocol', 'http'))
+        self.host = flet.TextField(hint_text='host', label='host', expand=True, value=kwargs.pop('host', '127.0.0.1'))
+        self.port = flet.TextField(hint_text='port', label='port', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('port', 80))
+        self.login = flet.TextField(hint_text='login', label='login', expand=True, value=kwargs.pop('login', ''))
+        self.password = flet.TextField(hint_text='password', label='password', password=True, can_reveal_password=True, expand=True, value=kwargs.pop('password', ''))
+        self.network_timeout_get_product = flet.TextField(hint_text='0.1', label='timeout get product seconds', input_filter=FloatNumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('network_timeout_get_product', 0.1))
+        self.db_file_name = flet.TextField(hint_text='db file name', label='db file name', expand=True, value=kwargs.pop('db_file_name', 'prod.db'))
+        self.sync_products_interval = flet.TextField(hint_text='seconds', label='sync products interval', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('sync_products_interval', 3600))
+        self.sync_sales_interval = flet.TextField(hint_text='seconds', label='sync sales interval', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('sync_sales_interval', 3600))
+        self.basket_font_size = flet.TextField(hint_text='basket font size', label='basket font size', input_filter=flet.NumbersOnlyInputFilter(), keyboard_type=flet.KeyboardType.NUMBER, expand=True, value=kwargs.pop('basket_font_size', 16))
+        self.scales_port = flet.TextField(hint_text='/dev/ttyS0', label='scales RS232', expand=True, value=kwargs.pop('scales_port', '/dev/ttyS0'))
+        self.scales_baud = flet.TextField(hint_text='9600', label='scales baud', expand=True, value=kwargs.pop('scales_baud', 9600))
+        self.scales_timeout = flet.TextField(hint_text='0.5', label='scales timeout', expand=True, value=kwargs.pop('scales_timeout', 0.5))
+        self.scales_wait_read = flet.TextField(hint_text='1', label='scales wait', expand=True, value=kwargs.pop('scales_wait_read', 1))
+        self.scales_ratio = flet.TextField(hint_text='1000', label='ratio', expand=True, value=kwargs.pop('scales_ratio', 1000))
+        self.scales_unit_ids = flet.TextField(hint_text='1,2,3', label='units', expand=True, value=kwargs.pop('scales_unit_ids', '1,2,3'))
+        self.search_auto_min_count = flet.TextField(hint_text='2', label='🔍 min', expand=True, value=kwargs.pop('search_auto_min_count', 2))
+        self.search_auto_limit = flet.TextField(hint_text='1000', label='🔍 limit', expand=True, value=kwargs.pop('search_auto_limit', 1000))
         useordercustomerdialog = kwargs.pop('use_order_customer_dialog')
         if useordercustomerdialog is None:
             useordercustomerdialog = True
@@ -155,10 +156,11 @@ class SettingsDialog(flet.CupertinoAlertDialog):
                 self.page.http_conn.http_login = self.login.value
             if self.page.http_conn.http_password != self.password.value:
                 self.page.http_conn.http_password = self.password.value
-            if await self.page.http_conn.auth(True) == 200:
+            if await self.page.http_conn.auth() == 200:
                 self.page.run_thread(sync_products, self.page)
+            self.log(LD, ['🌍', self.translation_language.value, self.page.directory_locale])
             try:
                 set_locale(self.translation_language.value, locale_dir=self.page.directory_locale)
-            except Exception as e:
-                self.log(LE, [e])
+            except Exception as err:
+                self.log(LE, [err])
         self.page.pop_dialog()#evt.control.parent

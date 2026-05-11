@@ -447,7 +447,7 @@ async def main(page: flet.Page):
         if evt.control.selected_index == 0:
             basket_order()
         elif evt.control.selected_index == 1:
-            page.settings_dialog = await run_settings_dialog(page)
+            await run_settings_dialog(page)
         elif evt.control.selected_index == 2:
             if not page.products_dialog:
                 page.products_dialog = ProductsDialog(modal=True, db_conn=page.db_conn, control_basket=basket)
@@ -588,6 +588,8 @@ async def main(page: flet.Page):
                 await basket.focus_count()
             case 'F5':
                 await search_switch()
+            case 'F6':
+                await run_settings_dialog(page)
             case 'F9':
                 await pagelet.show_end_drawer()
             case 'F10':
