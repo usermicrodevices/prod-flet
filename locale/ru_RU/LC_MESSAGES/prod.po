@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "POT-Creation-Date: 2025-05-11 01:10+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: 2026-05-11 16:00+0300\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -41,6 +41,9 @@ msgstr "переключение между поиском и количеств
 
 msgid "switch between search and scanning"
 msgstr "переключение между поиском и сканированием"
+
+msgid "settings"
+msgstr "настройки"
 
 msgid "finish order customer"
 msgstr "завершить заказ покупателя"
