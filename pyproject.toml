@@ -5,7 +5,7 @@ description = "prod client"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "flet>=0.84.0",
+  "flet>=0.85.0",
   "requests>=2.32.5",
   "pyserial>=3.5",
   #'opencv-python>=4.10.0 ; platform_system != "Android"',

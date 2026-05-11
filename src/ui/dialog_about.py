@@ -33,6 +33,7 @@ class AboutDialog(flet.AlertDialog):
             f'''F3 - {_("switch between search and final sum")}\n''' + \
             f'''F4 - {_("switch between search and count last product")}\n''' + \
             f'''F5 - {_("switch between search and scanning")}\n''' + \
+            f'''F6 - {_("settings")}\n''' + \
             f'''F9 - {_("open navigation menu")}\n''' + \
             f'''F10 - {_("finish order provider")}\n''' + \
             f'''F11 - {_("finish order customer")}\n''' + \
